@@ -1,1 +1,0 @@
-"./main.obj" "../AM335x_PRU.cmd" -llibc.a -l"../../../../../lib/rpmsg_lib.lib" 
