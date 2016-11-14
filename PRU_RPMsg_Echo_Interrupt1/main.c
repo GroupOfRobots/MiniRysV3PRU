@@ -54,13 +54,13 @@ volatile register uint32_t __R31;
 #define TO_ARM_HOST			18	
 #define FROM_ARM_HOST			19
 
-#define LSTEP				7 //P8_40
-#define LDIR				6 //P8_39
-#define RSTEP				3 //P8_44
-#define RDIR				2 //P8_43
+#define LSTEP				5 //P8_42
+#define LDIR				4 //P8_41
+#define RSTEP				2 //P8_43
+#define RDIR				3 //P8_44
 
-#define LM0					4 //P8_41
-#define LM1					5 //P8_42
+#define LM0					7 //P8_40
+#define LM1					6 //P8_39
 #define RM0					0 //P8_45
 #define RM1					1 //P8_46
 
@@ -82,7 +82,7 @@ struct data_frame{
 	unsigned int speedr;
 	uint8_t dirl;
 	uint8_t dirr;
-	uint8_t mstep;
+	uint8_t mstep; //1 - fullstep 2 - halfstep 3 - 1/4step 4 1/8 step
 };
 
 /*
@@ -101,8 +101,8 @@ void main(void)
 	struct pru_rpmsg_transport transport;
 	struct data_frame* received;
 	received = (struct data_frame*) malloc(sizeof(struct data_frame));
-	received->speedl = 5000;
-	received->speedr = 6000;
+	received->speedl = 0;
+	received->speedr = 0;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
 	unsigned int i;
@@ -147,6 +147,31 @@ void main(void)
 				else{
 					__R30 = __R30 & ~(1 << RDIR);
 				}
+				if(received->mstep==1){
+					__R30 = __R30 & ~(1 << LM1);
+					__R30 = __R30 & ~(1 << LM0);
+					__R30 = __R30 & ~(1 << RM1);
+					__R30 = __R30 & ~(1 << RM0);
+				}
+				if(received->mstep==2){
+					__R30 = __R30 & ~(1 << LM1);
+					__R30 = __R30 | (1 << LM0);
+					__R30 = __R30 & ~(1 << RM1);
+					__R30 = __R30 | (1 << RM0);
+				}
+				if(received->mstep==3){
+					__R30 = __R30 | (1 << LM1);
+					__R30 = __R30 & ~(1 << LM0);
+					__R30 = __R30 | (1 << RM1);
+					__R30 = __R30 & ~(1 << RM0);
+				}
+				if(received->mstep==4){
+					__R30 = __R30 | (1 << LM1);
+					__R30 = __R30 | (1 << LM0);
+					__R30 = __R30 | (1 << RM1);
+					__R30 = __R30 | (1 << RM0);
+				}
+
 			}
 		}
 		for(i=0; i<50000; ++j, ++i, ++k){
