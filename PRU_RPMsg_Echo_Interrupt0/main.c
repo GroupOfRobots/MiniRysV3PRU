@@ -67,6 +67,25 @@ volatile register uint32_t __R31;
 
 uint8_t payload[RPMSG_BUF_SIZE];
 
+static int measure_distance_mm(void)
+{
+	int t_us = hc_sr04_measure_pulse();
+	int d_mm;
+
+	/*
+	 * Print the distance received from the sonar
+	 * At 20 degrees in dry air the speed of sound is 3422 mm/sec
+	 * so it takes 2.912 us to make 1 mm, i.e. 5.844 us for a
+	 * roundtrip of 1 mm.
+	 */
+	d_mm = (t_us * 1000) / 5844;
+	if (t_us < 0)
+		d_mm = -1;
+
+	return d_mm;
+}
+
+
 /*
  * main.c
  */
