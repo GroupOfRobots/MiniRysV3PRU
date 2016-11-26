@@ -33,7 +33,10 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include <pru_cfg.h>
+#include <pru_ctrl.h>
 #include <pru_intc.h>
 #include <rsc_types.h>
 #include <pru_rpmsg.h>
@@ -59,6 +62,24 @@ volatile register uint32_t __R31;
 #define CHAN_DESC			"Channel 30"
 #define CHAN_PORT			30
 
+
+#define PRU_OCP_RATE_HZ		(200 * 1000 * 1000)
+
+#define TRIG_PULSE_US		10
+
+#define GPIO1_BASE		0x4804C000
+
+#define GPIO1_OE		(*(volatile uint32_t *)(GPIO1_BASE + 0x134))
+#define GPIO1_DATAIN		(*(volatile uint32_t *)(GPIO1_BASE + 0x138))
+#define GPIO1_CLEARDATAOUT	(*(volatile uint32_t *)(GPIO1_BASE + 0x190))
+#define GPIO1_SETDATAOUT	(*(volatile uint32_t *)(GPIO1_BASE + 0x194))
+
+#define TRIG_BIT		12
+#define ECHO1_BIT		13
+#define ECHO2_BIT		14
+#define ECHO3_BIT		15
+
+
 /*
  * Used to make sure the Linux drivers are ready for RPMsg communication
  * Found at linux-x.y.z/include/uapi/linux/virtio_config.h
@@ -66,10 +87,75 @@ volatile register uint32_t __R31;
 #define VIRTIO_CONFIG_S_DRIVER_OK	4
 
 uint8_t payload[RPMSG_BUF_SIZE];
+int* distance;
 
-static int measure_distance_mm(void)
+void hc_sr04_init(void)
 {
-	int t_us = hc_sr04_measure_pulse();
+	/* Enable OCP access */
+	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
+
+	/*
+	 * Don't bother with PRU GPIOs. Our timing requirements allow
+	 * us to use the "slow" system GPIOs.
+	 */
+	GPIO1_OE &= ~(1u << TRIG_BIT);	/* output */
+	GPIO1_OE |= (1u << ECHO1_BIT);	/* input */
+	GPIO1_OE |= (1u << ECHO2_BIT);	/* input */
+	GPIO1_OE |= (1u << ECHO3_BIT);	/* input */
+}
+
+int hc_sr04_measure_pulse(int snumber) //snumber - number of sonar from 1 to 3
+{
+	bool echo, timeout;
+
+	/* pulse the trigger for 10us */
+	GPIO1_SETDATAOUT = 1u << TRIG_BIT;
+	__delay_cycles(TRIG_PULSE_US * (PRU_OCP_RATE_HZ / 1000000));
+	GPIO1_CLEARDATAOUT = 1u << TRIG_BIT;
+
+	/* Enable counter */
+	PRU0_CTRL.CYCLE = 0;
+	PRU0_CTRL.CTRL_bit.CTR_EN = 1;
+
+	/* wait for ECHO to get high */
+	do {
+		if(snumber ==1)echo = !!(GPIO1_DATAIN & (1u << ECHO1_BIT));
+		if(snumber ==2)echo = !!(GPIO1_DATAIN & (1u << ECHO2_BIT));
+		if(snumber ==3)echo = !!(GPIO1_DATAIN & (1u << ECHO3_BIT));
+		timeout = PRU0_CTRL.CYCLE > PRU_OCP_RATE_HZ;
+	} while (!echo && !timeout);
+
+	PRU0_CTRL.CTRL_bit.CTR_EN = 0;
+
+	if (timeout)
+		return -1;
+
+	/* Restart the counter */
+	PRU0_CTRL.CYCLE = 0;
+	PRU0_CTRL.CTRL_bit.CTR_EN = 1;
+
+	/* measure the "high" pulse length */
+	do {
+		if(snumber ==1)echo = !!(GPIO1_DATAIN & (1u << ECHO1_BIT));
+		if(snumber ==2)echo = !!(GPIO1_DATAIN & (1u << ECHO2_BIT));
+		if(snumber ==3)echo = !!(GPIO1_DATAIN & (1u << ECHO3_BIT));
+		timeout = PRU0_CTRL.CYCLE > PRU_OCP_RATE_HZ;
+	} while (echo && !timeout);
+
+	PRU0_CTRL.CTRL_bit.CTR_EN = 0;
+
+	if (timeout)
+		return -1;
+
+	uint64_t cycles = PRU0_CTRL.CYCLE;
+
+	return cycles / ((uint64_t)PRU_OCP_RATE_HZ / 1000000);
+}
+
+
+int measure_distance_mm(int snumber)//snumber - sonar number from 1 to 3
+{
+	int t_us = hc_sr04_measure_pulse(snumber);
 	int d_mm;
 
 	/*
@@ -94,7 +180,9 @@ void main(void)
 	struct pru_rpmsg_transport transport;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
+	int sonarnumber;
 
+	hc_sr04_init(); //sonars initialization
 	/* Allow OCP master port access by the PRU so the PRU can read external memories */
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 
@@ -118,6 +206,12 @@ void main(void)
 			/* Receive all available messages, multiple messages can be sent per kick */
 			while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 				/* Echo the message back to the same address from which we just received */
+				sonarnumber = (int)payload;
+				if(sonarnumber==1||sonarnumber==2||sonarnumber==3){
+				payload[0] = (uint8_t)measure_distance_mm(sonarnumber);
+				}
+
+
 				pru_rpmsg_send(&transport, dst, src, payload, len);
 			}
 		}
