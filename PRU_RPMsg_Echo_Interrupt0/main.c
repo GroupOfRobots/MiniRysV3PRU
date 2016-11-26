@@ -67,17 +67,20 @@ volatile register uint32_t __R31;
 
 #define TRIG_PULSE_US		10
 
-#define GPIO1_BASE		0x4804C000
+#define GPIO0_BASE 0x44E07000
+#define GPIO1_BASE 0x4804C000
+#define GPIO2_BASE 0x481AC000
+#define GPIO3_BASE 0x481AE000
 
-#define GPIO1_OE		(*(volatile uint32_t *)(GPIO1_BASE + 0x134))
+#define GPIO1_OE		(*(volatile uint32_t *)(GPIO2_BASE + 0x134))
 #define GPIO1_DATAIN		(*(volatile uint32_t *)(GPIO1_BASE + 0x138))
 #define GPIO1_CLEARDATAOUT	(*(volatile uint32_t *)(GPIO1_BASE + 0x190))
 #define GPIO1_SETDATAOUT	(*(volatile uint32_t *)(GPIO1_BASE + 0x194))
 
-#define TRIG_BIT		12
-#define ECHO1_BIT		13
-#define ECHO2_BIT		14
-#define ECHO3_BIT		15
+#define TRIG_BIT		2 //to change used by wlink
+#define ECHO1_BIT		3 //to change used by wlink
+#define ECHO2_BIT		5 //to change used by wlink
+#define ECHO3_BIT		4 //to change used by wlink
 
 
 /*

@@ -2,7 +2,7 @@
 <link_info>
    <banner>PRU Linker Unix v2.1.3</banner>
    <copyright>Copyright (c) 2012-2015 Texas Instruments Incorporated</copyright>
-   <link_time>0x5838db1d</link_time>
+   <link_time>0x5839f313</link_time>
    <link_errors>0x0</link_errors>
    <output_file>PRU_RPMsg_Echo_Interrupt0.out</output_file>
    <entry_point>

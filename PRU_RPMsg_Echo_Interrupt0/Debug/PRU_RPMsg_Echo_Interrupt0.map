@@ -1,7 +1,7 @@
 ******************************************************************************
                      PRU Linker Unix v2.1.3                    
 ******************************************************************************
->> Linked Sat Nov 26 01:45:17 2016
+>> Linked Sat Nov 26 21:39:47 2016
 
 OUTPUT FILE NAME:   <PRU_RPMsg_Echo_Interrupt0.out>
 ENTRY POINT SYMBOL: "_c_int00_noinit_noargs_noexit"  address: 00000000
