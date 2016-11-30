@@ -1,7 +1,7 @@
 ******************************************************************************
                      PRU Linker Unix v2.1.3                    
 ******************************************************************************
->> Linked Sat Nov 26 21:39:47 2016
+>> Linked Wed Nov 30 22:19:03 2016
 
 OUTPUT FILE NAME:   <PRU_RPMsg_Echo_Interrupt0.out>
 ENTRY POINT SYMBOL: "_c_int00_noinit_noargs_noexit"  address: 00000000
@@ -12,10 +12,10 @@ MEMORY CONFIGURATION
          name            origin    length      used     unused   attr    fill
 ----------------------  --------  ---------  --------  --------  ----  --------
 PAGE 0:
-  PRU_IMEM              00000000   00002000  00000d88  00001278  RWIX
+  PRU_IMEM              00000000   00002000  00000f94  0000106c  RWIX
 
 PAGE 1:
-  PRU_DMEM_0_1          00000000   00002000  00000398  00001c68  RWIX
+  PRU_DMEM_0_1          00000000   00002000  000004ac  00001b54  RWIX
   PRU_DMEM_1_0          00002000   00002000  00000000  00002000  RWIX
 
 PAGE 2:
@@ -60,29 +60,32 @@ section   page    origin      length       input sections
 *          0    00000000    00000014     
                   00000000    00000014     rtspruv3_le.lib : boot_special.obj (.text:_c_int00_noinit_noargs_noexit)
 
-.text      0    00000014    00000d74     
+.text      0    00000014    00000f80     
                   00000014    00000338     main.obj (.text:hc_sr04_measure_pulse)
                   0000034c    000001b0     rtspruv3_le.lib : imath64.obj (.text:__pruabi_divull)
-                  000004fc    0000012c     main.obj (.text:main)
-                  00000628    00000114     rtspruv3_le.lib : divu_c.obj (.text:__pruabi_divu)
-                  0000073c    000000d8     rpmsg_lib.lib : pru_rpmsg.object (.text:pru_rpmsg_send)
-                  00000814    000000c4                   : pru_rpmsg.object (.text:pru_rpmsg_receive)
-                  000008d8    0000008c     rtspruv3_le.lib : divi_c.obj (.text:__pruabi_divi)
-                  00000964    0000006c                     : imath64.obj (.text:_subcull)
-                  000009d0    00000068     main.obj (.text:measure_distance_mm)
-                  00000a38    00000060     rtspruv3_le.lib : imath64.obj (.text:__pruabi_lslll)
-                  00000a98    00000060     rpmsg_lib.lib : pru_rpmsg.object (.text:pru_rpmsg_init)
-                  00000af8    00000060                   : pru_virtqueue.object (.text:pru_virtqueue_get_avail_buf)
-                  00000b58    00000060                   : pru_virtqueue.object (.text:pru_virtqueue_init)
-                  00000bb8    0000005c                   : pru_rpmsg.object (.text:pru_rpmsg_channel)
-                  00000c14    0000005c                   : pru_virtqueue.object (.text:pru_virtqueue_add_used_buf)
-                  00000c70    00000048     main.obj (.text:hc_sr04_init)
-                  00000cb8    00000044     rtspruv3_le.lib : imath64.obj (.text:__pruabi_lsrll)
-                  00000cfc    00000034                     : memcpy.obj (.text)
-                  00000d30    00000028     rpmsg_lib.lib : pru_virtqueue.object (.text:pru_virtqueue_kick)
-                  00000d58    00000020     rtspruv3_le.lib : imath64.obj (.text:__lmbdull)
-                  00000d78    00000008                     : exit.obj (.text:abort)
-                  00000d80    00000008                     : exit.obj (.text:loader_exit)
+                  000004fc    00000144     main.obj (.text:main)
+                  00000640    0000013c     rtspruv3_le.lib : memory.obj (.text:malloc)
+                  0000077c    00000114                     : divu_c.obj (.text:__pruabi_divu)
+                  00000890    000000d8     rpmsg_lib.lib : pru_rpmsg.object (.text:pru_rpmsg_send)
+                  00000968    000000c4                   : pru_rpmsg.object (.text:pru_rpmsg_receive)
+                  00000a2c    000000b4     rtspruv3_le.lib : memory.obj (.text:minit)
+                  00000ae0    0000008c                     : divi_c.obj (.text:__pruabi_divi)
+                  00000b6c    0000006c                     : imath64.obj (.text:_subcull)
+                  00000bd8    00000068     main.obj (.text:measure_distance_mm)
+                  00000c40    00000060     rtspruv3_le.lib : imath64.obj (.text:__pruabi_lslll)
+                  00000ca0    00000060     rpmsg_lib.lib : pru_rpmsg.object (.text:pru_rpmsg_init)
+                  00000d00    00000060                   : pru_virtqueue.object (.text:pru_virtqueue_get_avail_buf)
+                  00000d60    00000060                   : pru_virtqueue.object (.text:pru_virtqueue_init)
+                  00000dc0    0000005c                   : pru_rpmsg.object (.text:pru_rpmsg_channel)
+                  00000e1c    0000005c                   : pru_virtqueue.object (.text:pru_virtqueue_add_used_buf)
+                  00000e78    00000048     main.obj (.text:hc_sr04_init)
+                  00000ec0    00000044     rtspruv3_le.lib : imath64.obj (.text:__pruabi_lsrll)
+                  00000f04    00000034                     : memcpy.obj (.text)
+                  00000f38    00000028     rpmsg_lib.lib : pru_virtqueue.object (.text:pru_virtqueue_kick)
+                  00000f60    00000020     rtspruv3_le.lib : imath64.obj (.text:__lmbdull)
+                  00000f80    00000008                     : exit.obj (.text:abort)
+                  00000f88    00000008                     : exit.obj (.text:loader_exit)
+                  00000f90    00000004                     : _lock.obj (.text:_nop)
 
 .bss       1    00000000    00000200     UNINITIALIZED
                   00000000    00000200     (.common:payload)
@@ -91,17 +94,29 @@ section   page    origin      length       input sections
                   00000200    00000004     rtspruv3_le.lib : boot.obj (.stack)
                   00000204    000000fc     --HOLE--
 
-.data      1    00000394    00000004     
-                  00000394    00000004     main.obj (.data:pru_intc_map)
+.data      1    000004a8    00000004     
+                  000004a8    00000004     main.obj (.data:pru_intc_map)
+
+.sysmem    1    00000300    00000100     UNINITIALIZED
+                  00000300    00000008     rtspruv3_le.lib : memory.obj (.sysmem)
+                  00000308    000000f8     --HOLE--
 
 .cinit     1    00000000    00000000     UNINITIALIZED
 
-.rodata    1    0000037c    00000018     
-                  0000037c    00000018     main.obj (.rodata:.string)
-
 .resource_table 
-*          1    00000300    0000007c     
-                  00000300    0000007c     main.obj (.resource_table:retain)
+*          1    00000400    0000007c     
+                  00000400    0000007c     main.obj (.resource_table:retain)
+
+.rodata    1    0000047c    00000018     
+                  0000047c    00000018     main.obj (.rodata:.string)
+
+.farbss    1    00000494    0000000c     UNINITIALIZED
+                  00000494    0000000c     rtspruv3_le.lib : memory.obj (.farbss)
+
+.fardata   1    000004a0    00000008     
+                  000004a0    00000004     rtspruv3_le.lib : memory.obj (.fardata)
+                  000004a4    00000002                     : _lock.obj (.fardata:_lock)
+                  000004a6    00000002                     : _lock.obj (.fardata:_unlock)
 
 .creg.PRU_INTC.noload.near 
 *          2    00020000    00000000     NOLOAD SECTION
@@ -138,13 +153,14 @@ SEGMENT ATTRIBUTES
      1 PHA_PAGE 2   1    
      2 PHA_PAGE 3   1    
      3 PHA_PAGE 4   1    
+     4 PHA_PAGE 5   1    
 
 
 GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name 
 
 page  address   name                         
 ----  -------   ----                         
-0     00000d80  C$$EXIT                      
+0     00000f88  C$$EXIT                      
 2     00026000  CT_CFG                       
 2     00020000  CT_INTC                      
 abs   481cc000  __PRU_CREG_BASE_DCAN0        
@@ -213,33 +229,40 @@ abs   0000000b  __PRU_CREG_UART1
 abs   0000000c  __PRU_CREG_UART2             
 1     00000300  __TI_STACK_END               
 abs   00000100  __TI_STACK_SIZE              
+abs   00000100  __TI_SYSMEM_SIZE             
 abs   ffffffff  __binit__                    
 abs   ffffffff  __c_args__                   
-0     000008d8  __pruabi_divi                
-0     00000628  __pruabi_divu                
+0     00000ae0  __pruabi_divi                
+0     0000077c  __pruabi_divu                
 0     0000034c  __pruabi_divull              
-0     00000a38  __pruabi_lslll               
-0     00000cb8  __pruabi_lsrll               
+0     00000c40  __pruabi_lslll               
+0     00000ec0  __pruabi_lsrll               
 0     00000000  _c_int00_noinit_noargs_noexit
+1     000004a4  _lock                        
+0     00000f90  _nop                         
 1     00000200  _stack                       
-0     00000d78  abort                        
+1     00000300  _sys_memory                  
+1     000004a6  _unlock                      
+0     00000f80  abort                        
 abs   ffffffff  binit                        
-0     00000c70  hc_sr04_init                 
+0     00000e78  hc_sr04_init                 
 0     00000014  hc_sr04_measure_pulse        
 0     000004fc  main                         
-0     000009d0  measure_distance_mm          
-0     00000cfc  memcpy                       
+0     00000640  malloc                       
+0     00000bd8  measure_distance_mm          
+0     00000f04  memcpy                       
+0     00000a2c  minit                        
 1     00000000  payload                      
-1     00000394  pru_intc_map                 
-0     00000bb8  pru_rpmsg_channel            
-0     00000a98  pru_rpmsg_init               
-0     00000814  pru_rpmsg_receive            
-0     0000073c  pru_rpmsg_send               
-0     00000c14  pru_virtqueue_add_used_buf   
-0     00000af8  pru_virtqueue_get_avail_buf  
-0     00000b58  pru_virtqueue_init           
-0     00000d30  pru_virtqueue_kick           
-1     00000300  resourceTable                
+1     000004a8  pru_intc_map                 
+0     00000dc0  pru_rpmsg_channel            
+0     00000ca0  pru_rpmsg_init               
+0     00000968  pru_rpmsg_receive            
+0     00000890  pru_rpmsg_send               
+0     00000e1c  pru_virtqueue_add_used_buf   
+0     00000d00  pru_virtqueue_get_avail_buf  
+0     00000d60  pru_virtqueue_init           
+0     00000f38  pru_virtqueue_kick           
+1     00000400  resourceTable                
 
 
 GLOBAL SYMBOLS: SORTED BY Symbol Address 
@@ -250,28 +273,34 @@ page  address   name
 0     00000014  hc_sr04_measure_pulse        
 0     0000034c  __pruabi_divull              
 0     000004fc  main                         
-0     00000628  __pruabi_divu                
-0     0000073c  pru_rpmsg_send               
-0     00000814  pru_rpmsg_receive            
-0     000008d8  __pruabi_divi                
-0     000009d0  measure_distance_mm          
-0     00000a38  __pruabi_lslll               
-0     00000a98  pru_rpmsg_init               
-0     00000af8  pru_virtqueue_get_avail_buf  
-0     00000b58  pru_virtqueue_init           
-0     00000bb8  pru_rpmsg_channel            
-0     00000c14  pru_virtqueue_add_used_buf   
-0     00000c70  hc_sr04_init                 
-0     00000cb8  __pruabi_lsrll               
-0     00000cfc  memcpy                       
-0     00000d30  pru_virtqueue_kick           
-0     00000d78  abort                        
-0     00000d80  C$$EXIT                      
+0     00000640  malloc                       
+0     0000077c  __pruabi_divu                
+0     00000890  pru_rpmsg_send               
+0     00000968  pru_rpmsg_receive            
+0     00000a2c  minit                        
+0     00000ae0  __pruabi_divi                
+0     00000bd8  measure_distance_mm          
+0     00000c40  __pruabi_lslll               
+0     00000ca0  pru_rpmsg_init               
+0     00000d00  pru_virtqueue_get_avail_buf  
+0     00000d60  pru_virtqueue_init           
+0     00000dc0  pru_rpmsg_channel            
+0     00000e1c  pru_virtqueue_add_used_buf   
+0     00000e78  hc_sr04_init                 
+0     00000ec0  __pruabi_lsrll               
+0     00000f04  memcpy                       
+0     00000f38  pru_virtqueue_kick           
+0     00000f80  abort                        
+0     00000f88  C$$EXIT                      
+0     00000f90  _nop                         
 1     00000000  payload                      
 1     00000200  _stack                       
 1     00000300  __TI_STACK_END               
-1     00000300  resourceTable                
-1     00000394  pru_intc_map                 
+1     00000300  _sys_memory                  
+1     00000400  resourceTable                
+1     000004a4  _lock                        
+1     000004a6  _unlock                      
+1     000004a8  pru_intc_map                 
 2     00020000  CT_INTC                      
 2     00026000  CT_CFG                       
 abs   00000000  __PRU_CREG_BASE_PRU_DMEM_0_1 
@@ -308,6 +337,7 @@ abs   0000001d  __PRU_CREG_TPCC
 abs   0000001e  __PRU_CREG_L3OCMC            
 abs   0000001f  __PRU_CREG_DDR               
 abs   00000100  __TI_STACK_SIZE              
+abs   00000100  __TI_SYSMEM_SIZE             
 abs   00002000  __PRU_CREG_BASE_PRU_DMEM_1_0 
 abs   00010000  __PRU_CREG_BASE_PRU_SHAREDMEM
 abs   00020000  __PRU_CREG_BASE_PRU_INTC     
@@ -343,4 +373,4 @@ abs   ffffffff  __binit__
 abs   ffffffff  __c_args__                   
 abs   ffffffff  binit                        
 
-[96 symbols]
+[103 symbols]

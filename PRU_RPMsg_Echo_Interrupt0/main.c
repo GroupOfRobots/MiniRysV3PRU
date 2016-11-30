@@ -44,6 +44,12 @@
 
 volatile register uint32_t __R31;
 
+struct distance_frame{
+	uint16_t front;
+	uint16_t back;
+	uint16_t top;
+};
+
 /* Host-0 Interrupt sets bit 30 in register R31 */
 #define HOST_INT			((uint32_t) 1 << 30)
 
@@ -72,15 +78,15 @@ volatile register uint32_t __R31;
 #define GPIO2_BASE 0x481AC000
 #define GPIO3_BASE 0x481AE000
 
-#define GPIO1_OE		(*(volatile uint32_t *)(GPIO2_BASE + 0x134))
-#define GPIO1_DATAIN		(*(volatile uint32_t *)(GPIO1_BASE + 0x138))
-#define GPIO1_CLEARDATAOUT	(*(volatile uint32_t *)(GPIO1_BASE + 0x190))
-#define GPIO1_SETDATAOUT	(*(volatile uint32_t *)(GPIO1_BASE + 0x194))
+#define GPIO2_OE		(*(volatile uint32_t *)(GPIO2_BASE + 0x134))
+#define GPIO2_DATAIN		(*(volatile uint32_t *)(GPIO2_BASE + 0x138))
+#define GPIO2_CLEARDATAOUT	(*(volatile uint32_t *)(GPIO2_BASE + 0x190))
+#define GPIO2_SETDATAOUT	(*(volatile uint32_t *)(GPIO2_BASE + 0x194))
 
-#define TRIG_BIT		2 //to change used by wlink
+#define TRIG_BIT		4 //to change used by wlink
 #define ECHO1_BIT		3 //to change used by wlink
 #define ECHO2_BIT		5 //to change used by wlink
-#define ECHO3_BIT		4 //to change used by wlink
+#define ECHO3_BIT		2 //to change used by wlink
 
 
 /*
@@ -90,7 +96,6 @@ volatile register uint32_t __R31;
 #define VIRTIO_CONFIG_S_DRIVER_OK	4
 
 uint8_t payload[RPMSG_BUF_SIZE];
-int* distance;
 
 void hc_sr04_init(void)
 {
@@ -101,10 +106,10 @@ void hc_sr04_init(void)
 	 * Don't bother with PRU GPIOs. Our timing requirements allow
 	 * us to use the "slow" system GPIOs.
 	 */
-	GPIO1_OE &= ~(1u << TRIG_BIT);	/* output */
-	GPIO1_OE |= (1u << ECHO1_BIT);	/* input */
-	GPIO1_OE |= (1u << ECHO2_BIT);	/* input */
-	GPIO1_OE |= (1u << ECHO3_BIT);	/* input */
+	GPIO2_OE &= ~(1u << TRIG_BIT);	/* output */
+	GPIO2_OE |= (1u << ECHO1_BIT);	/* input */
+	GPIO2_OE |= (1u << ECHO2_BIT);	/* input */
+	GPIO2_OE |= (1u << ECHO3_BIT);	/* input */
 }
 
 int hc_sr04_measure_pulse(int snumber) //snumber - number of sonar from 1 to 3
@@ -112,9 +117,9 @@ int hc_sr04_measure_pulse(int snumber) //snumber - number of sonar from 1 to 3
 	bool echo, timeout;
 
 	/* pulse the trigger for 10us */
-	GPIO1_SETDATAOUT = 1u << TRIG_BIT;
+	GPIO2_SETDATAOUT = 1u << TRIG_BIT;
 	__delay_cycles(TRIG_PULSE_US * (PRU_OCP_RATE_HZ / 1000000));
-	GPIO1_CLEARDATAOUT = 1u << TRIG_BIT;
+	GPIO2_CLEARDATAOUT = 1u << TRIG_BIT;
 
 	/* Enable counter */
 	PRU0_CTRL.CYCLE = 0;
@@ -122,9 +127,9 @@ int hc_sr04_measure_pulse(int snumber) //snumber - number of sonar from 1 to 3
 
 	/* wait for ECHO to get high */
 	do {
-		if(snumber ==1)echo = !!(GPIO1_DATAIN & (1u << ECHO1_BIT));
-		if(snumber ==2)echo = !!(GPIO1_DATAIN & (1u << ECHO2_BIT));
-		if(snumber ==3)echo = !!(GPIO1_DATAIN & (1u << ECHO3_BIT));
+		if(snumber ==1)echo = !!(GPIO2_DATAIN & (1u << ECHO1_BIT));
+		if(snumber ==2)echo = !!(GPIO2_DATAIN & (1u << ECHO2_BIT));
+		if(snumber ==3)echo = !!(GPIO2_DATAIN & (1u << ECHO3_BIT));
 		timeout = PRU0_CTRL.CYCLE > PRU_OCP_RATE_HZ;
 	} while (!echo && !timeout);
 
@@ -139,9 +144,9 @@ int hc_sr04_measure_pulse(int snumber) //snumber - number of sonar from 1 to 3
 
 	/* measure the "high" pulse length */
 	do {
-		if(snumber ==1)echo = !!(GPIO1_DATAIN & (1u << ECHO1_BIT));
-		if(snumber ==2)echo = !!(GPIO1_DATAIN & (1u << ECHO2_BIT));
-		if(snumber ==3)echo = !!(GPIO1_DATAIN & (1u << ECHO3_BIT));
+		if(snumber ==1)echo = !!(GPIO2_DATAIN & (1u << ECHO1_BIT));
+		if(snumber ==2)echo = !!(GPIO2_DATAIN & (1u << ECHO2_BIT));
+		if(snumber ==3)echo = !!(GPIO2_DATAIN & (1u << ECHO3_BIT));
 		timeout = PRU0_CTRL.CYCLE > PRU_OCP_RATE_HZ;
 	} while (echo && !timeout);
 
@@ -156,7 +161,7 @@ int hc_sr04_measure_pulse(int snumber) //snumber - number of sonar from 1 to 3
 }
 
 
-int measure_distance_mm(int snumber)//snumber - sonar number from 1 to 3
+uint16_t measure_distance_mm(int snumber)//snumber - sonar number from 1 to 3
 {
 	int t_us = hc_sr04_measure_pulse(snumber);
 	int d_mm;
@@ -183,7 +188,9 @@ void main(void)
 	struct pru_rpmsg_transport transport;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
-	int sonarnumber;
+	struct distance_frame* distances;
+	distances = (struct distance_frame*) malloc(sizeof(struct distance_frame));
+
 
 	hc_sr04_init(); //sonars initialization
 	/* Allow OCP master port access by the PRU so the PRU can read external memories */
@@ -198,7 +205,6 @@ void main(void)
 
 	/* Initialize the RPMsg transport structure */
 	pru_rpmsg_init(&transport, &resourceTable.rpmsg_vring0, &resourceTable.rpmsg_vring1, TO_ARM_HOST, FROM_ARM_HOST);
-
 	/* Create the RPMsg channel between the PRU and ARM user space using the transport structure. */
 	while (pru_rpmsg_channel(RPMSG_NS_CREATE, &transport, CHAN_NAME, CHAN_DESC, CHAN_PORT) != PRU_RPMSG_SUCCESS);
 	while (1) {
@@ -209,13 +215,11 @@ void main(void)
 			/* Receive all available messages, multiple messages can be sent per kick */
 			while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 				/* Echo the message back to the same address from which we just received */
-				sonarnumber = (int)payload;
-				if(sonarnumber==1||sonarnumber==2||sonarnumber==3){
-				payload[0] = (uint8_t)measure_distance_mm(sonarnumber);
-				}
+				distances->front=(uint16_t)measure_distance_mm(1);
+				distances->back=(uint16_t)measure_distance_mm(2);
+				distances->top=(uint16_t)measure_distance_mm(3);
 
-
-				pru_rpmsg_send(&transport, dst, src, payload, len);
+				pru_rpmsg_send(&transport, dst, src, distances, len);
 			}
 		}
 	}
