@@ -31,3 +31,11 @@
 # Debug files
 *.dSYM/
 *.su
+
+# Editor files
+Debug
+Release
+.project
+.cproject
+.settings
+*.sublime-*
