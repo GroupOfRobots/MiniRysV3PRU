@@ -101,7 +101,7 @@ void sonarsInit() {
 }
 
 // Measure sonars pulse time in microseconds
-void sonarsMeasurePulse(uint64_t & pulse1, uint64_t & pulse2, uint64_t & pulse3) {
+void sonarsMeasurePulse(uint64_t * pulse1, uint64_t * pulse2, uint64_t * pulse3) {
 	// pulse the trigger for 10us
 	GPIO2_SETDATAOUT = 1u << TRIG_BIT;
 	__delay_cycles(TRIG_PULSE_US * (PRU_OCP_RATE_HZ / 1000000));
@@ -132,28 +132,28 @@ void sonarsMeasurePulse(uint64_t & pulse1, uint64_t & pulse2, uint64_t & pulse3)
 	}
 
 	if (timeout) {
-		pulse1 = -1;
-		pulse2 = -1;
-		pulse3 = -1;
+		*pulse1 = -1;
+		*pulse2 = -1;
+		*pulse3 = -1;
 		return;
 	} else {
-		pulse1 = 0;
-		pulse2 = 0;
-		pulse3 = 0;
+		*pulse1 = 0;
+		*pulse2 = 0;
+		*pulse3 = 0;
 	}
 
 	uint64_t timeoutStart = PRU0_CTRL.CYCLE;
 
 	// measure the "high" pulse length
-	while (!timeout && (!pulse1 || !pulse2 || !pulse3)) {
-		if (!pulse1 && GPIO2_DATAIN & (1u << ECHO1_BIT)) {
-			pulse1 = PRU0_CTRL.CYCLE - sonar1EchoStart;
+	while (!timeout && (!*pulse1 || !*pulse2 || !*pulse3)) {
+		if (!*pulse1 && GPIO2_DATAIN & (1u << ECHO1_BIT)) {
+			*pulse1 = PRU0_CTRL.CYCLE - sonar1EchoStart;
 		}
-		if (!pulse2 && GPIO2_DATAIN & (1u << ECHO2_BIT)) {
-			pulse2 = PRU0_CTRL.CYCLE - sonar2EchoStart;
+		if (!*pulse2 && GPIO2_DATAIN & (1u << ECHO2_BIT)) {
+			*pulse2 = PRU0_CTRL.CYCLE - sonar2EchoStart;
 		}
-		if (!pulse3 && GPIO2_DATAIN & (1u << ECHO3_BIT)) {
-			pulse3 = PRU0_CTRL.CYCLE - sonar3EchoStart;
+		if (!*pulse3 && GPIO2_DATAIN & (1u << ECHO3_BIT)) {
+			*pulse3 = PRU0_CTRL.CYCLE - sonar3EchoStart;
 		}
 
 		timeout = (PRU0_CTRL.CYCLE - timeoutStart) > PRU_OCP_RATE_HZ;
@@ -163,24 +163,24 @@ void sonarsMeasurePulse(uint64_t & pulse1, uint64_t & pulse2, uint64_t & pulse3)
 	PRU0_CTRL.CTRL_bit.CTR_EN = 0;
 
 	if (timeout) {
-		pulse1 = -1;
-		pulse2 = -1;
-		pulse3 = -1;
+		*pulse1 = -1;
+		*pulse2 = -1;
+		*pulse3 = -1;
 		return;
 	}
 
-	pulse1 /= ((uint64_t)PRU_OCP_RATE_HZ / 1000000);
-	pulse2 /= ((uint64_t)PRU_OCP_RATE_HZ / 1000000);
-	pulse3 /= ((uint64_t)PRU_OCP_RATE_HZ / 1000000);
+	*pulse1 /= ((uint64_t)PRU_OCP_RATE_HZ / 1000000);
+	*pulse2 /= ((uint64_t)PRU_OCP_RATE_HZ / 1000000);
+	*pulse3 /= ((uint64_t)PRU_OCP_RATE_HZ / 1000000);
 }
 
-void sonarsMeasureDistance(uint16_t & distance1, uint16_t & distance2, uint16_t & distance3) {
+void sonarsMeasureDistance(uint16_t * distance1, uint16_t * distance2, uint16_t * distance3) {
 	uint64_t pulse1, pulse2, pulse3;
-	sonarsMeasurePulse(pulse1, pulse2, pulse3);
+	sonarsMeasurePulse(&pulse1, &pulse2, &pulse3);
 
-	distance1 = pulse1 * 1000 / 5844;
-	distance2 = pulse2 * 1000 / 5844;
-	distance3 = pulse3 * 1000 / 5844;
+	*distance1 = pulse1 * 1000 / 5844;
+	*distance2 = pulse2 * 1000 / 5844;
+	*distance3 = pulse3 * 1000 / 5844;
 }
 
 void main() {
@@ -206,6 +206,7 @@ void main() {
 	// Create the RPMsg channel between the PRU and ARM user space using the transport structure.
 	while (pru_rpmsg_channel(RPMSG_NS_CREATE, &transport, CHAN_NAME, CHAN_DESC, CHAN_PORT) != PRU_RPMSG_SUCCESS);
 
+	uint16_t distanceFront, distanceBack, distanceTop;
 	while (1) {
 		// Check bit 30 of register R31 to see if the ARM has kicked us
 		if (!(__R31 & HOST_INT)) {
@@ -217,7 +218,10 @@ void main() {
 		// Receive all available messages - multiple messages can be sent per kick
 		while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 			// Do the measurement
-			sonarsMeasureDistance(distances->front, distances->back, distances->top);
+			sonarsMeasureDistance(&distanceFront, &distanceBack, &distanceTop);
+			distances->front = distanceFront;
+			distances->back = distanceBack;
+			distances->top = distanceTop;
 			// Echo the message back to the same address from which we just received
 			pru_rpmsg_send(&transport, dst, src, distances, len);
 		}
