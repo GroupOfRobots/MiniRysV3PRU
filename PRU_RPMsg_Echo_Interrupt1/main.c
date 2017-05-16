@@ -31,14 +31,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <pru_cfg.h>
-#include <pru_ctrl.h>
-#include <pru_intc.h>
-#include <pru_rpmsg.h>
 #include <rsc_types.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pru_cfg.h>
+#include <pru_ctrl.h>
+#include <pru_intc.h>
+#include <pru_rpmsg.h>
 #include "resource_table_1.h"
 
 /* Host-1 Interrupt sets bit 31 in register R31 */
