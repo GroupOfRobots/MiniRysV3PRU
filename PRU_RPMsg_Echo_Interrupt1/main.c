@@ -178,12 +178,13 @@ void main() {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << LSTEP);
 
-			// Reset cycle timer
-			PRU1_CTRL.CYCLE = 0;
 			// Reduce right motor step switch timepoint
 			r -= t;
 			// Update left motor step switch timepoint
 			l = received->speedLeft;
+			// Reset cycle timer
+			PRU1_CTRL.CYCLE = 0;
+			t = 0;
 		}
 
 		// If enough time has passed, switch step for right motor
