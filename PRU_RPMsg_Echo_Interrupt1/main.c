@@ -31,13 +31,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <pru_cfg.h>
+#include <pru_ctrl.h>
+#include <pru_intc.h>
+#include <pru_rpmsg.h>
+#include <rsc_types.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pru_cfg.h>
-#include <pru_intc.h>
-#include <rsc_types.h>
-#include <pru_rpmsg.h>
 #include "resource_table_1.h"
 
 /* Host-1 Interrupt sets bit 31 in register R31 */
@@ -180,7 +181,7 @@ void main() {
 			// Reset cycle timer
 			PRU1_CTRL.CYCLE = 0;
 			// Reduce right motor step switch timepoint
-			r = received->speedRight - (t - r)
+			r -= t;
 			// Update left motor step switch timepoint
 			l = received->speedLeft;
 		}
@@ -191,7 +192,7 @@ void main() {
 			__R30 = __R30 ^ (1 << RSTEP);
 
 			// Update right motor step switch timepoint
-			r = received->speedRight;
+			r += received->speedRight;
 		}
 	}
 
