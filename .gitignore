@@ -40,3 +40,5 @@
 */.ccsproject
 */.settings
 *.sublime-*
+
+!Binaries/*
