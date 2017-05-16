@@ -114,49 +114,51 @@ void sonarsMeasurePulse(uint64_t * pulse1, uint64_t * pulse2, uint64_t * pulse3)
 	uint64_t sonar1EchoStart = 0;
 	uint64_t sonar2EchoStart = 0;
 	uint64_t sonar3EchoStart = 0;
+	*pulse1 = 0;
+	*pulse2 = 0;
+	*pulse3 = 0;
 
 	bool timeout = false;
-	// wait for ECHO to get high
-	while (!timeout && (!sonar1EchoStart || !sonar2EchoStart || !sonar3EchoStart)) {
-		if (!sonar1EchoStart && !(GPIO2_DATAIN & (1u << ECHO1_BIT))) {
-			sonar1EchoStart = PRU0_CTRL.CYCLE;
-		}
-		if (!sonar2EchoStart && !(GPIO2_DATAIN & (1u << ECHO2_BIT))) {
-			sonar2EchoStart = PRU0_CTRL.CYCLE;
-		}
-		if (!sonar3EchoStart && !(GPIO2_DATAIN & (1u << ECHO3_BIT))) {
-			sonar3EchoStart = PRU0_CTRL.CYCLE;
-		}
-
-		timeout = PRU0_CTRL.CYCLE > PRU_OCP_RATE_HZ;
-	}
-
-	if (timeout) {
-		*pulse1 = -1;
-		*pulse2 = -1;
-		*pulse3 = -1;
-		return;
-	} else {
-		*pulse1 = 0;
-		*pulse2 = 0;
-		*pulse3 = 0;
-	}
-
-	uint64_t timeoutStart = PRU0_CTRL.CYCLE;
-
-	// measure the "high" pulse length
+	// Measure "high" pulse width on all 3 echo pins
+	// Until all pulses have been measured or until timeout...
 	while (!timeout && (!*pulse1 || !*pulse2 || !*pulse3)) {
-		if (!*pulse1 && GPIO2_DATAIN & (1u << ECHO1_BIT)) {
-			*pulse1 = PRU0_CTRL.CYCLE - sonar1EchoStart;
-		}
-		if (!*pulse2 && GPIO2_DATAIN & (1u << ECHO2_BIT)) {
-			*pulse2 = PRU0_CTRL.CYCLE - sonar2EchoStart;
-		}
-		if (!*pulse3 && GPIO2_DATAIN & (1u << ECHO3_BIT)) {
-			*pulse3 = PRU0_CTRL.CYCLE - sonar3EchoStart;
+		// ... if sonar's echo pulse didn't start...
+		if (!sonar1EchoStart) {
+			// ... check the pin for being "high"...
+			if (GPIO2_DATAIN & (1u << ECHO1_BIT)) {
+				// ... and if it is, save sonar's pulse beggining cycle...
+				sonar1EchoStart = PRU0_CTRL.CYCLE;
+			}
+		} else if (!*pulse1) {
+			// ... else (if sonar's pulse started), if sonar's pulse didn't end, check pin for being "low"...
+			if(!(GPIO2_DATAIN & (1u << ECHO1_BIT))) {
+				// ... and if so, save pulse width as difference between "now" and start.
+				*pulse1 = PRU0_CTRL.CYCLE - sonar1EchoStart;
+			}
 		}
 
-		timeout = (PRU0_CTRL.CYCLE - timeoutStart) > PRU_OCP_RATE_HZ;
+		if (!sonar2EchoStart) {
+			if (GPIO2_DATAIN & (1u << ECHO2_BIT)) {
+				sonar2EchoStart = PRU0_CTRL.CYCLE;
+			}
+		} else if (!*pulse2) {
+			if(!(GPIO2_DATAIN & (1u << ECHO2_BIT))) {
+				*pulse2 = PRU0_CTRL.CYCLE - sonar2EchoStart;
+			}
+		}
+
+		if (!sonar3EchoStart) {
+			if (GPIO2_DATAIN & (1u << ECHO3_BIT)) {
+				sonar3EchoStart = PRU0_CTRL.CYCLE;
+			}
+		} else if (!*pulse3) {
+			if(!(GPIO2_DATAIN & (1u << ECHO3_BIT))) {
+				*pulse3 = PRU0_CTRL.CYCLE - sonar3EchoStart;
+			}
+		}
+
+		// Also check timeout - 1s.
+		timeout = PRU0_CTRL.CYCLE > PRU_OCP_RATE_HZ;
 	}
 
 	// Disable counter
