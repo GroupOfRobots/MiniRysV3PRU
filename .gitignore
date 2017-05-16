@@ -33,9 +33,10 @@
 *.su
 
 # Editor files
-Debug
-Release
-.project
-.cproject
-.settings
+*/Debug
+*/Release
+*/.project
+*/.cproject
+*/.ccsproject
+*/.settings
 *.sublime-*
