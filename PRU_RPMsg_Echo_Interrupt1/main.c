@@ -96,9 +96,9 @@ void main() {
 	received->speedRight = 0;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
-	unsigned int l = 0;
-	unsigned int r = 0;
-	unsigned int t = 0;
+	int64_t l = 0;
+	int64_t r = 0;
+	int64_t t = 0;
 
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
