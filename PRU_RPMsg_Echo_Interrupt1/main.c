@@ -161,13 +161,13 @@ void main() {
 					__R30 = __R30 | (1 << LM0);
 					__R30 = __R30 & ~(1 << RM1);
 					__R30 = __R30 | (1 << RM0);
-				} else if (received->microstep == 3) {
+				} else if (received->microstep == 4) {
 					// 1/4 step: M0 = 0, M1 = 1
 					__R30 = __R30 | (1 << LM1);
 					__R30 = __R30 & ~(1 << LM0);
 					__R30 = __R30 | (1 << RM1);
 					__R30 = __R30 & ~(1 << RM0);
-				} else if (received->microstep == 4) {
+				} else if (received->microstep == 8) {
 					// 1/8 step: M0 = 1, M1 = 1
 					__R30 = __R30 | (1 << LM1);
 					__R30 = __R30 | (1 << LM0);
@@ -181,7 +181,7 @@ void main() {
 		int64_t timeNow = PRU1_CTRL.CYCLE;
 
 		// If enough time has passed, switch step for left motor
-		if (timeNow >= stepTargetLeft) {
+		if (speedLeft && timeNow >= stepTargetLeft) {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << LSTEP);
 
@@ -195,7 +195,7 @@ void main() {
 		}
 
 		// If enough time has passed, switch step for right motor
-		if (timeNow >= stepTargetRight) {
+		if (speedRight && timeNow >= stepTargetRight) {
 			// Toggle right motor step
 			__R30 = __R30 ^ (1 << RSTEP);
 
