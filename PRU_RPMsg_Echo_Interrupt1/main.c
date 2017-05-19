@@ -173,8 +173,8 @@ void main() {
 				}
 
 				// Set speeds
-				stepTargetLeft += received->speedLeft - speedLeft;
-				stepTargetRight += received->speedRight - speedRight;
+				// stepTargetLeft += received->speedLeft - speedLeft;
+				// stepTargetRight += received->speedRight - speedRight;
 				speedLeft = received->speedLeft;
 				speedRight = received->speedRight;
 			}
