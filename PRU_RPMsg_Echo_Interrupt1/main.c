@@ -96,9 +96,10 @@ void main() {
 	received->speedRight = 0;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
-	int64_t l = 0;
-	int64_t r = 0;
-	int64_t t = 0;
+	int64_t stepTargetLeft = 0;
+	int64_t stepTargetRight = 0;
+	int64_t speedLeft = 0;
+	int64_t speedRight = 0;
 
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
@@ -127,6 +128,12 @@ void main() {
 			// Receive all available messages, multiple messages can be sent per kick
 			while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 				received = (struct DataFrame*) payload;
+
+				// Set speeds
+				stepTargetLeft += received->speedLeft - speedLeft;
+				stepTargetRight += received->speedRight - speedRight;
+				speedLeft = received->speedLeft;
+				speedRight = received->speedRight;
 
 				// Set direction of left motor
 				if (received->directionLeft == 1) {
@@ -171,31 +178,29 @@ void main() {
 		}
 
 		// Save current timepoint
-		t = PRU1_CTRL.CYCLE;
+		int64_t timeNow = PRU1_CTRL.CYCLE;
 
 		// If enough time has passed, switch step for left motor
-		if (t >= l) {
+		if (timeNow >= stepTargetLeft) {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << LSTEP);
 
 			// Reduce right motor step switch timepoint
-			r -= t;
+			stepTargetRight -= timeNow;
 			// Update left motor step switch timepoint
-			l = received->speedLeft;
+			stepTargetLeft = speedLeft;
 			// Reset cycle timer
 			PRU1_CTRL.CYCLE = 0;
-			t = 0;
+			timeNow = 0;
 		}
 
 		// If enough time has passed, switch step for right motor
-		if (t >= r) {
+		if (timeNow >= stepTargetRight) {
 			// Toggle right motor step
 			__R30 = __R30 ^ (1 << RSTEP);
 
 			// Update right motor step switch timepoint
-			r += received->speedRight;
+			stepTargetRight += speedRight;
 		}
 	}
-
-	free(received);
 }
