@@ -82,7 +82,7 @@ struct DataFrame {
 	unsigned int speedRight;
 	uint8_t directionLeft;
 	uint8_t directionRight;
-	//1 - fullstep; 2 - halfstep; 3 - 1/4 step; 4 - 1/8 step
+	//1 - fullstep; 2 - halfstep; 4 - 1/4 step; 8 - 1/8 step
 	uint8_t microstep;
 };
 
@@ -129,25 +129,6 @@ void main() {
 			while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 				received = (struct DataFrame*) payload;
 
-				// Set speeds
-				stepTargetLeft += received->speedLeft - speedLeft;
-				stepTargetRight += received->speedRight - speedRight;
-				speedLeft = received->speedLeft;
-				speedRight = received->speedRight;
-
-				// Set direction of left motor
-				if (received->directionLeft == 1) {
-					__R30 = __R30 | (1 << LDIR);
-				} else {
-					__R30 = __R30 & ~(1 << LDIR);
-				}
-				// Set direction of right motor
-				if (received->directionRight == 1) {
-					__R30 = __R30 | (1 << RDIR);
-				} else {
-					__R30 = __R30 & ~(1 << RDIR);
-				}
-
 				// Set microstepping
 				if (received->microstep == 1) {
 					// Full step: M0 = 0, M1 = 0
@@ -173,7 +154,29 @@ void main() {
 					__R30 = __R30 | (1 << LM0);
 					__R30 = __R30 | (1 << RM1);
 					__R30 = __R30 | (1 << RM0);
+				} else {
+					// Invalid microstepping? bail out!
+					continue;
 				}
+
+				// Set direction of left motor
+				if (received->directionLeft == 1) {
+					__R30 = __R30 | (1 << LDIR);
+				} else {
+					__R30 = __R30 & ~(1 << LDIR);
+				}
+				// Set direction of right motor
+				if (received->directionRight == 1) {
+					__R30 = __R30 | (1 << RDIR);
+				} else {
+					__R30 = __R30 & ~(1 << RDIR);
+				}
+
+				// Set speeds
+				stepTargetLeft += received->speedLeft - speedLeft;
+				stepTargetRight += received->speedRight - speedRight;
+				speedLeft = received->speedLeft;
+				speedRight = received->speedRight;
 			}
 		}
 
