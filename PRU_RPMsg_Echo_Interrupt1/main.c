@@ -96,10 +96,8 @@ void main() {
 	received->speedRight = 0;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
-	int64_t stepTargetLeft = 0;
-	int64_t stepTargetRight = 0;
-	int64_t speedLeft = 0;
-	int64_t speedRight = 0;
+	int32_t stepTargetLeft = 0;
+	int32_t stepTargetRight = 0;
 
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
@@ -173,37 +171,36 @@ void main() {
 				}
 
 				// Set speeds
-				stepTargetLeft += received->speedLeft - speedLeft;
-				stepTargetRight += received->speedRight - speedRight;
-				speedLeft = received->speedLeft;
-				speedRight = received->speedRight;
+				stepTargetLeft = received->speedLeft;
+				stepTargetRight = received->speedRight;
+				PRU1_CTRL.CYCLE = 0;
 			}
 		}
 
 		// Save current timepoint
-		int64_t timeNow = PRU1_CTRL.CYCLE;
+		int32_t timeNow = PRU1_CTRL.CYCLE;
 
 		// If enough time has passed, switch step for left motor
-		if (speedLeft && (timeNow >= stepTargetLeft)) {
+		if (received->speedLeft != 0 && timeNow >= stepTargetLeft) {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << LSTEP);
 
 			// Reduce right motor step switch timepoint
 			stepTargetRight -= timeNow;
 			// Update left motor step switch timepoint
-			stepTargetLeft = speedLeft;
+			stepTargetLeft = received->speedLeft;
 			// Reset cycle timer
 			PRU1_CTRL.CYCLE = 0;
 			timeNow = 0;
 		}
 
 		// If enough time has passed, switch step for right motor
-		if (speedRight && (timeNow >= stepTargetRight)) {
+		if (received->speedRight != 0 && timeNow >= stepTargetRight) {
 			// Toggle right motor step
 			__R30 = __R30 ^ (1 << RSTEP);
 
 			// Update right motor step switch timepoint
-			stepTargetRight += speedRight;
+			stepTargetRight += received->speedRight;
 		}
 	}
 }
