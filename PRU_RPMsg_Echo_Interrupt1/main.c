@@ -101,6 +101,8 @@ void main() {
 	volatile uint8_t *status;
 	int32_t stepTargetLeft = 0;
 	int32_t stepTargetRight = 0;
+	uint32_t speedLeft = 0;
+	uint32_t speedRight = 0;
 
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
@@ -175,16 +177,17 @@ void main() {
 
 				// Set speeds, check max value (uint->int cast)
 				if (received->speedLeft > INT32_MAX) {
-					stepTargetLeft = INT32_MAX;
+					speedLeft = INT32_MAX;
 				} else {
-					stepTargetLeft = received->speedLeft;
+					speedLeft = received->speedLeft;
 				}
 				if (received->speedRight > INT32_MAX) {
-					stepTargetRight = INT32_MAX;
+					speedRight = INT32_MAX;
 				} else {
-					stepTargetRight = received->speedRight;
+					speedRight = received->speedRight;
 				}
-				PRU1_CTRL.CYCLE = 0;
+				stepTargetLeft = speedLeft;
+				stepTargetRight = speedRight;
 			}
 		}
 
@@ -199,7 +202,7 @@ void main() {
 			// Reduce right motor step switch timepoint
 			stepTargetRight -= timeNow;
 			// Update left motor step switch timepoint
-			stepTargetLeft = received->speedLeft;
+			stepTargetLeft = speedLeft;
 			// Reset cycle timer
 			PRU1_CTRL.CYCLE = 0;
 			timeNow = 0;
@@ -211,7 +214,7 @@ void main() {
 			__R30 = __R30 ^ (1 << RSTEP);
 
 			// Update right motor step switch timepoint
-			stepTargetRight += received->speedRight;
+			stepTargetRight += speedRight;
 		}
 	}
 }
