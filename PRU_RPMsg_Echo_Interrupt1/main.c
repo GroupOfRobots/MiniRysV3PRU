@@ -186,8 +186,8 @@ void main() {
 				} else {
 					speedRight = received->speedRight;
 				}
-				stepTargetLeft = speedLeft;
-				stepTargetRight = speedRight;
+				// stepTargetLeft = speedLeft;
+				// stepTargetRight = speedRight;
 			}
 		}
 
@@ -195,7 +195,8 @@ void main() {
 		int32_t timeNow = PRU1_CTRL.CYCLE;
 
 		// If enough time has passed, switch step for left motor
-		if (received->speedLeft != 0 && timeNow >= stepTargetLeft) {
+		// if (received->speedLeft != 0 && timeNow >= stepTargetLeft) {
+		if (timeNow >= stepTargetLeft) {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << LSTEP);
 
@@ -209,7 +210,8 @@ void main() {
 		}
 
 		// If enough time has passed, switch step for right motor
-		if (received->speedRight != 0 && timeNow >= stepTargetRight) {
+		// if (received->speedRight != 0 && timeNow >= stepTargetRight) {
+		if (timeNow >= stepTargetRight) {
 			// Toggle right motor step
 			__R30 = __R30 ^ (1 << RSTEP);
 
