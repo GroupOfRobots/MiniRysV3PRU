@@ -78,8 +78,8 @@ volatile register uint32_t __R30;
 volatile register uint32_t __R31;
 
 struct DataFrame {
-	unsigned int speedLeft;
-	unsigned int speedRight;
+	uint32_t speedLeft;
+	uint32_t speedRight;
 	uint8_t directionLeft;
 	uint8_t directionRight;
 	//1 - fullstep; 2 - halfstep; 4 - 1/4 step; 8 - 1/8 step
@@ -94,6 +94,9 @@ void main() {
 	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
 	received->speedLeft = 0;
 	received->speedRight = 0;
+	received->directionLeft = 0;
+	received->directionRight = 0;
+	received->microstep = 1;
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
 	int32_t stepTargetLeft = 0;
@@ -170,9 +173,17 @@ void main() {
 					__R30 = __R30 & ~(1 << RDIR);
 				}
 
-				// Set speeds
-				stepTargetLeft = received->speedLeft;
-				stepTargetRight = received->speedRight;
+				// Set speeds, check max value (uint->int cast)
+				if (received->speedLeft > INT32_MAX) {
+					stepTargetLeft = INT32_MAX;
+				} else {
+					stepTargetLeft = received->speedLeft;
+				}
+				if (received->speedRight > INT32_MAX) {
+					stepTargetRight = INT32_MAX;
+				} else {
+					stepTargetRight = received->speedRight;
+				}
 				PRU1_CTRL.CYCLE = 0;
 			}
 		}
