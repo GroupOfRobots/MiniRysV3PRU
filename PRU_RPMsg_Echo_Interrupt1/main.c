@@ -175,19 +175,22 @@ void main() {
 					__R30 = __R30 & ~(1 << RDIR);
 				}
 
-				// Set speeds, check max value (uint->int cast)
+				// Clip speeds values (uint->int cast)
 				if (received->speedLeft > INT32_MAX) {
-					speedLeft = INT32_MAX;
-				} else {
-					speedLeft = received->speedLeft;
+					received->speedLeft = INT32_MAX;
 				}
 				if (received->speedRight > INT32_MAX) {
-					speedRight = INT32_MAX;
-				} else {
-					speedRight = received->speedRight;
+					received->speedRight = INT32_MAX;
 				}
-				// stepTargetLeft = speedLeft;
-				// stepTargetRight = speedRight;
+
+				// If speeds have changed, save them and reset timer
+				if (speedLeft != received->speedLeft || speedRight != received->speedRight) {
+					speedLeft = received->speedLeft;
+					speedRight = received->speedRight;
+					stepTargetLeft = speedLeft;
+					stepTargetRight = speedRight;
+					PRU1_CTRL.CYCLE = 0;
+				}
 			}
 		}
 
@@ -195,7 +198,6 @@ void main() {
 		int32_t timeNow = PRU1_CTRL.CYCLE;
 
 		// If enough time has passed, switch step for left motor
-		// if (received->speedLeft != 0 && timeNow >= stepTargetLeft) {
 		if (timeNow >= stepTargetLeft) {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << LSTEP);
@@ -210,7 +212,6 @@ void main() {
 		}
 
 		// If enough time has passed, switch step for right motor
-		// if (received->speedRight != 0 && timeNow >= stepTargetRight) {
 		if (timeNow >= stepTargetRight) {
 			// Toggle right motor step
 			__R30 = __R30 ^ (1 << RSTEP);
