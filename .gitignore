@@ -35,9 +35,6 @@
 # Editor files
 */Debug
 */Release
-*/.project
-*/.cproject
-*/.ccsproject
 */.settings
 *.sublime-*
 
