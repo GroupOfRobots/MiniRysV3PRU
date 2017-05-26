@@ -74,6 +74,9 @@
 // Used to make sure the Linux drivers are ready for RPMsg communication; Found at linux-x.y.z/include/uapi/linux/virtio_config.h
 #define VIRTIO_CONFIG_S_DRIVER_OK 4
 
+// How long to wait between frames before shutting down
+#define SHUTDOWN_WATCHDOG_TIMER (1*200*1000*1000)
+
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
 
@@ -103,6 +106,7 @@ void main() {
 	int32_t stepTargetRight = 0;
 	uint32_t speedLeft = 0;
 	uint32_t speedRight = 0;
+	uint32_t timeFromLastFrame = 0;
 
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
@@ -191,11 +195,20 @@ void main() {
 					stepTargetRight = speedRight;
 					PRU1_CTRL.CYCLE = 0;
 				}
+
+				// Reset watchdog timer
+				timeFromLastFrame = 0;
 			}
 		}
 
 		// Save current timepoint
 		int32_t timeNow = PRU1_CTRL.CYCLE;
+
+		if ((timeFromLastFrame + timeNow) > SHUTDOWN_WATCHDOG_TIMER) {
+			speedLeft = 0;
+			speedRight = 0;
+			continue;
+		}
 
 		// If enough time has passed, switch step for left motor
 		if (timeNow >= stepTargetLeft) {
@@ -206,6 +219,8 @@ void main() {
 			stepTargetRight -= timeNow;
 			// Update left motor step switch timepoint
 			stepTargetLeft = speedLeft;
+			// Update watchdog timer
+			timeFromLastFrame += timeNow;
 			// Reset cycle timer
 			PRU1_CTRL.CYCLE = 0;
 			timeNow = 0;
