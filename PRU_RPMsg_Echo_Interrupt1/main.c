@@ -50,15 +50,24 @@
 #define TO_ARM_HOST 18
 #define FROM_ARM_HOST 19
 
-#define LSTEP 5 //P8_42
-#define LDIR 4 //P8_41
-#define RSTEP 2 //P8_43
-#define RDIR 3 //P8_44
+			0x0b8 0xd // Left Dir; 		P8_39,	gpio2_12,	eQEP2_index,		/sys/class/gpio/gpio76
+			0x0bc 0xd // Left Step;		P8_40,	gpio2_13,	eQEP2_strobe,		/sys/class/gpio/gpio77
+			0x0b0 0xd // M0;			P8_41,	gpio2_10,	eQEP2A_in,			/sys/class/gpio/gpio74
+			0x0b4 0xd // Enable;		P8_42,	gpio2_11,	eQEP2B_in,			/sys/class/gpio/gpio75
+			0x0a8 0xd // M2;			P8_43,	gpio2_8,	ehrpwm2_tripzone,	/sys/class/gpio/gpio72
+			0x0ac 0xd // M1;			P8_44,	gpio2_9,	ehrpwm0_synco,		/sys/class/gpio/gpio73
+			0x0a0 0xd // Right Dir;		P8_45,	gpio2_6,	ehrpwm2A,			/sys/class/gpio/gpio70
+			0x0a4 0xd // Right Step;	P8_46,	gpio2_7,	ehrpwm2B,			/sys/class/gpio/gpio71
 
-#define LM0 7 //P8_40
-#define LM1 6 //P8_39
-#define RM0 0 //P8_45
-#define RM1 1 //P8_46
+
+#define PIN_ENABLE 5 // P8_42
+#define PIN_MICROSTEP_0 4 // P8_41
+#define PIN_MICROSTEP_1 3 // P8_44
+#define PIN_MICROSTEP_2 2 // P8_43
+#define PIN_DIR_LEFT 6 // P8_39
+#define PIN_STEP_LEFT 7 // P8_40
+#define PIN_DIR_RIGHT 0 // P8_45
+#define PIN_STEP_RIGHT 1 // P8_46
 
 /*
  * Using the name 'rpmsg-client-sample' will probe the RPMsg sample driver
@@ -81,17 +90,21 @@ volatile register uint32_t __R30;
 volatile register uint32_t __R31;
 
 struct DataFrame {
-	uint32_t speedLeft;
-	uint32_t speedRight;
+	uint8_t enabled;
+	// 1/microstep (1 - full step, 4 - 1/4 step and so on)
+	uint8_t microstep;
 	uint8_t directionLeft;
 	uint8_t directionRight;
-	//1 - fullstep; 2 - halfstep; 4 - 1/4 step; 8 - 1/8 step
-	uint8_t microstep;
+	uint32_t speedLeft;
+	uint32_t speedRight;
 };
 
 uint8_t payload[RPMSG_BUF_SIZE];
 
 void main() {
+	// First things first, disable motors.
+	__R30 = __R30 & ~(1 << PIN_ENABLE);
+
 	struct pru_rpmsg_transport transport;
 	struct DataFrame* received;
 	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
@@ -138,45 +151,59 @@ void main() {
 
 				// Set microstepping
 				if (received->microstep == 1) {
-					// Full step: M0 = 0, M1 = 0
-					__R30 = __R30 & ~(1 << LM1);
-					__R30 = __R30 & ~(1 << LM0);
-					__R30 = __R30 & ~(1 << RM1);
-					__R30 = __R30 & ~(1 << RM0);
+					// Full step: M0 = 0, M1 = 0, M2 = 0
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_0);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_1);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_2);
 				} else if (received->microstep == 2) {
-					// Half step: M0 = 1, M1 = 0
-					__R30 = __R30 & ~(1 << LM1);
-					__R30 = __R30 | (1 << LM0);
-					__R30 = __R30 & ~(1 << RM1);
-					__R30 = __R30 | (1 << RM0);
+					// Half step: M0 = 1, M1 = 0, M2 = 0
+					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_1);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_2);
 				} else if (received->microstep == 4) {
-					// 1/4 step: M0 = 0, M1 = 1
-					__R30 = __R30 | (1 << LM1);
-					__R30 = __R30 & ~(1 << LM0);
-					__R30 = __R30 | (1 << RM1);
-					__R30 = __R30 & ~(1 << RM0);
+					// 1/4 step: M0 = 0, M1 = 1, M2 = 0
+					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_1);
+					__R30 = __R30 | (1 << PIN_MICROSTEP_2);
 				} else if (received->microstep == 8) {
-					// 1/8 step: M0 = 1, M1 = 1
-					__R30 = __R30 | (1 << LM1);
-					__R30 = __R30 | (1 << LM0);
-					__R30 = __R30 | (1 << RM1);
-					__R30 = __R30 | (1 << RM0);
+					// 1/8 step: M0 = 1, M1 = 1, M2 = 0
+					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
+					__R30 = __R30 | (1 << PIN_MICROSTEP_1);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_2);
+				} else if (received->microstep == 16) {
+					// 1/8 step: M0 = 0, M1 = 0, M2 = 1
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_0);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_1);
+					__R30 = __R30 | (1 << PIN_MICROSTEP_2);
+				} else if (received->microstep == 32) {
+					// 1/8 step: M0 = 1, M1 = 1, M2 = 1
+					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
+					__R30 = __R30 | (1 << PIN_MICROSTEP_1);
+					__R30 = __R30 | (1 << PIN_MICROSTEP_2);
 				} else {
 					// Invalid microstepping? bail out!
 					continue;
 				}
 
+				// Enable/disable motors
+				if (received->enabled) {
+					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
+				} else {
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_0);
+					return;
+				}
+
 				// Set direction of left motor
 				if (received->directionLeft == 1) {
-					__R30 = __R30 | (1 << LDIR);
+					__R30 = __R30 | (1 << PIN_DIR_LEFT);
 				} else {
-					__R30 = __R30 & ~(1 << LDIR);
+					__R30 = __R30 & ~(1 << PIN_DIR_LEFT);
 				}
 				// Set direction of right motor
 				if (received->directionRight == 1) {
-					__R30 = __R30 | (1 << RDIR);
+					__R30 = __R30 | (1 << PIN_DIR_RIGHT);
 				} else {
-					__R30 = __R30 & ~(1 << RDIR);
+					__R30 = __R30 & ~(1 << PIN_DIR_RIGHT);
 				}
 
 				// Clip speeds values (uint->int cast)
@@ -204,18 +231,23 @@ void main() {
 		// Save current timepoint
 		int32_t timeNow = PRU1_CTRL.CYCLE;
 
+		// Check communication timeout
 		if ((timeFromLastFrame + timeNow) > SHUTDOWN_WATCHDOG_TIMER) {
+			// If it happened, disable motors...
+			__R30 = __R30 & ~(1 << PIN_MICROSTEP_0);
+			// ... update timer...
 			if (timeFromLastFrame <= SHUTDOWN_WATCHDOG_TIMER) {
 				timeFromLastFrame += timeNow;
 			}
 			PRU1_CTRL.CYCLE = 0;
+			// ... and stop generating steps
 			continue;
 		}
 
 		// If enough time has passed, switch step for left motor
 		if (timeNow >= stepTargetLeft) {
 			// Toggle left motor step
-			__R30 = __R30 ^ (1 << LSTEP);
+			__R30 = __R30 ^ (1 << PIN_STEP_LEFT);
 
 			// Reduce right motor step switch timepoint
 			stepTargetRight -= timeNow;
@@ -231,7 +263,7 @@ void main() {
 		// If enough time has passed, switch step for right motor
 		if (timeNow >= stepTargetRight) {
 			// Toggle right motor step
-			__R30 = __R30 ^ (1 << RSTEP);
+			__R30 = __R30 ^ (1 << PIN_STEP_RIGHT);
 
 			// Update right motor step switch timepoint
 			stepTargetRight += speedRight;
