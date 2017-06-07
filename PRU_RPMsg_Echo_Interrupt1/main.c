@@ -50,16 +50,6 @@
 #define TO_ARM_HOST 18
 #define FROM_ARM_HOST 19
 
-			0x0b8 0xd // Left Dir; 		P8_39,	gpio2_12,	eQEP2_index,		/sys/class/gpio/gpio76
-			0x0bc 0xd // Left Step;		P8_40,	gpio2_13,	eQEP2_strobe,		/sys/class/gpio/gpio77
-			0x0b0 0xd // M0;			P8_41,	gpio2_10,	eQEP2A_in,			/sys/class/gpio/gpio74
-			0x0b4 0xd // Enable;		P8_42,	gpio2_11,	eQEP2B_in,			/sys/class/gpio/gpio75
-			0x0a8 0xd // M2;			P8_43,	gpio2_8,	ehrpwm2_tripzone,	/sys/class/gpio/gpio72
-			0x0ac 0xd // M1;			P8_44,	gpio2_9,	ehrpwm0_synco,		/sys/class/gpio/gpio73
-			0x0a0 0xd // Right Dir;		P8_45,	gpio2_6,	ehrpwm2A,			/sys/class/gpio/gpio70
-			0x0a4 0xd // Right Step;	P8_46,	gpio2_7,	ehrpwm2B,			/sys/class/gpio/gpio71
-
-
 #define PIN_ENABLE 5 // P8_42
 #define PIN_MICROSTEP_0 4 // P8_41
 #define PIN_MICROSTEP_1 3 // P8_44
@@ -84,7 +74,7 @@
 #define VIRTIO_CONFIG_S_DRIVER_OK 4
 
 // How long to wait between frames before shutting down (1s = 200M cycles)
-#define SHUTDOWN_WATCHDOG_TIMER (200000000)
+#define SHUTDOWN_WATCHDOG_TIMER (200 * 1000 * 1000)
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
