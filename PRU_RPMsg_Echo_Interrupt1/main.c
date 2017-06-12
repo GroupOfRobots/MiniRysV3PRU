@@ -92,8 +92,8 @@ struct DataFrame {
 uint8_t payload[RPMSG_BUF_SIZE];
 
 void main() {
-	// First things first, disable motors.
-	__R30 = __R30 & ~(1 << PIN_ENABLE);
+	// First things first, disable motors. Note: 'enable' pin is negated on the drivers.
+	__R30 = __R30 | (1 << PIN_ENABLE);
 
 	struct pru_rpmsg_transport transport;
 	struct DataFrame* received;
@@ -177,9 +177,9 @@ void main() {
 
 				// Enable/disable motors
 				if (received->enabled) {
-					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
+					__R30 = __R30 & ~(1 << PIN_ENABLE);
 				} else {
-					__R30 = __R30 & ~(1 << PIN_MICROSTEP_0);
+					__R30 = __R30 | (1 << PIN_ENABLE);
 					return;
 				}
 
@@ -224,7 +224,7 @@ void main() {
 		// Check communication timeout
 		if ((timeFromLastFrame + timeNow) > SHUTDOWN_WATCHDOG_TIMER) {
 			// If it happened, disable motors...
-			__R30 = __R30 & ~(1 << PIN_MICROSTEP_0);
+			__R30 = __R30 | (1 << PIN_ENABLE);
 			// ... update timer...
 			if (timeFromLastFrame <= SHUTDOWN_WATCHDOG_TIMER) {
 				timeFromLastFrame += timeNow;
