@@ -85,7 +85,7 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="PRU_RPMsg_Echo_Interrupt1.com.ti.ccstudio.buildDefinitions.PRU.ProjectType.1927506433" name="PRU" projectType="com.ti.ccstudio.buildDefinitions.PRU.ProjectType"/>
+		<project id="pru1_enable_all.com.ti.ccstudio.buildDefinitions.PRU.ProjectType.1927506433" name="PRU" projectType="com.ti.ccstudio.buildDefinitions.PRU.ProjectType"/>
 	</storageModule>
 	<storageModule moduleId="scannerConfiguration"/>
 	<storageModule moduleId="org.eclipse.cdt.core.language.mapping">

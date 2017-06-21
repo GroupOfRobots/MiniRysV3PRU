@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>PRU_RPMsg_Echo_Interrupt0</name>
+	<name>pru0_sonars_controller</name>
 	<comment></comment>
 	<projects>
 	</projects>
