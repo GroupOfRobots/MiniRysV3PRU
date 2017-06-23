@@ -102,37 +102,26 @@ void main() {
 	__R31 = __R31 | (1 << PIN_DIR_RIGHT);
 	__R31 = __R31 | (1 << PIN_STEP_RIGHT);
 
-	struct pru_rpmsg_transport transport;
-	struct DataFrame* received;
-	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
-	received->speedLeft = 0;
-	received->speedRight = 0;
-	received->directionLeft = 0;
-	received->directionRight = 0;
-	received->microstep = 1;
-	uint16_t src, dst, len;
-	volatile uint8_t *status;
-	uint8_t enabled = 0;
-	int32_t timeFromLastFrame = 0;
-
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 	// Clear the status of the PRU-ICSS system event that the ARM will use to 'kick' us
 	CT_INTC.SICR_bit.STS_CLR_IDX = FROM_ARM_HOST;
 
 	// Make sure the Linux drivers are ready for RPMsg communication
+	volatile uint8_t *status;
 	status = &resourceTable.rpmsg_vdev.status;
 	while (!(*status & VIRTIO_CONFIG_S_DRIVER_OK));
 
 	// Initialize the RPMsg transport structure
+	struct pru_rpmsg_transport transport;
 	pru_rpmsg_init(&transport, &resourceTable.rpmsg_vring0, &resourceTable.rpmsg_vring1, TO_ARM_HOST, FROM_ARM_HOST);
 
 	// Create the RPMsg channel between the PRU and ARM user space using the transport structure.
 	while (pru_rpmsg_channel(RPMSG_NS_CREATE, &transport, CHAN_NAME, CHAN_DESC, CHAN_PORT) != PRU_RPMSG_SUCCESS);
 
-	// Enable counter
-	PRU1_CTRL.CYCLE = 0;
-	PRU1_CTRL.CTRL_bit.CTR_EN = 1;
+	uint16_t src, dst, len;
+	struct DataFrame* received;
+	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
 
 	while (1) {
 		// Check bit 30 of register R31 to see if the ARM has kicked us
@@ -144,45 +133,25 @@ void main() {
 				received = (struct DataFrame*) payload;
 
 				if (received->enabled) {
-					enabled = 1;
-					timeFromLastFrame = 0;
+					__R31 = __R31 & ~(1 << PIN_ENABLE);
+					__R31 = __R31 & ~(1 << PIN_MICROSTEP_0);
+					__R31 = __R31 & ~(1 << PIN_MICROSTEP_1);
+					__R31 = __R31 & ~(1 << PIN_MICROSTEP_2);
+					__R31 = __R31 & ~(1 << PIN_DIR_LEFT);
+					__R31 = __R31 & ~(1 << PIN_STEP_LEFT);
+					__R31 = __R31 & ~(1 << PIN_DIR_RIGHT);
+					__R31 = __R31 & ~(1 << PIN_STEP_RIGHT);
 				} else {
-					enabled = 0;
+					__R31 = __R31 | (1 << PIN_ENABLE);
+					__R31 = __R31 | (1 << PIN_MICROSTEP_0);
+					__R31 = __R31 | (1 << PIN_MICROSTEP_1);
+					__R31 = __R31 | (1 << PIN_MICROSTEP_2);
+					__R31 = __R31 | (1 << PIN_DIR_LEFT);
+					__R31 = __R31 | (1 << PIN_STEP_LEFT);
+					__R31 = __R31 | (1 << PIN_DIR_RIGHT);
+					__R31 = __R31 | (1 << PIN_STEP_RIGHT);
 				}
 			}
-		}
-
-		// Save current timepoint
-		int32_t timeNow = PRU1_CTRL.CYCLE;
-
-		// Check communication timeout
-		if ((timeFromLastFrame + timeNow) > SHUTDOWN_WATCHDOG_TIMER) {
-			enabled = 0;
-
-			if (timeFromLastFrame <= SHUTDOWN_WATCHDOG_TIMER) {
-				timeFromLastFrame += timeNow;
-			}
-			PRU1_CTRL.CYCLE = 0;
-		}
-
-		if (enabled) {
-			__R31 = __R31 & ~(1 << PIN_ENABLE);
-			__R31 = __R31 & ~(1 << PIN_MICROSTEP_0);
-			__R31 = __R31 & ~(1 << PIN_MICROSTEP_1);
-			__R31 = __R31 & ~(1 << PIN_MICROSTEP_2);
-			__R31 = __R31 & ~(1 << PIN_DIR_LEFT);
-			__R31 = __R31 & ~(1 << PIN_STEP_LEFT);
-			__R31 = __R31 & ~(1 << PIN_DIR_RIGHT);
-			__R31 = __R31 & ~(1 << PIN_STEP_RIGHT);
-		} else {
-			__R31 = __R31 | (1 << PIN_ENABLE);
-			__R31 = __R31 | (1 << PIN_MICROSTEP_0);
-			__R31 = __R31 | (1 << PIN_MICROSTEP_1);
-			__R31 = __R31 | (1 << PIN_MICROSTEP_2);
-			__R31 = __R31 | (1 << PIN_DIR_LEFT);
-			__R31 = __R31 | (1 << PIN_STEP_LEFT);
-			__R31 = __R31 | (1 << PIN_DIR_RIGHT);
-			__R31 = __R31 | (1 << PIN_STEP_RIGHT);
 		}
 	}
 }
