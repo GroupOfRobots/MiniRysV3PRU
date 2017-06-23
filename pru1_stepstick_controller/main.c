@@ -50,14 +50,14 @@
 #define TO_ARM_HOST 18
 #define FROM_ARM_HOST 19
 
-#define PIN_ENABLE 5 // P8_42
-#define PIN_MICROSTEP_0 4 // P8_41
-#define PIN_MICROSTEP_1 3 // P8_44
-#define PIN_MICROSTEP_2 2 // P8_43
-#define PIN_DIR_LEFT 6 // P8_39
-#define PIN_STEP_LEFT 7 // P8_40
-#define PIN_DIR_RIGHT 0 // P8_45
-#define PIN_STEP_RIGHT 1 // P8_46
+#define PIN_ENABLE 8 // P8_27, LCD_VSYNC
+#define PIN_MICROSTEP_0 10 // P8_28, LCD_PCLK
+#define PIN_MICROSTEP_1 9 // P8_29, LCD_HSYNC
+#define PIN_MICROSTEP_2 11 // P8_30, LCD_DE
+#define PIN_DIR_LEFT 2 // P8_43, LCD_DATA2
+#define PIN_STEP_LEFT 3 // P8_44, LCD_DATA3
+#define PIN_DIR_RIGHT 0 // P8_45, LCD_DATA0
+#define PIN_STEP_RIGHT 1 // P8_46, LCD_DATA1
 
 /*
  * Using the name 'rpmsg-client-sample' will probe the RPMsg sample driver
