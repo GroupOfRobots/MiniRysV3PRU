@@ -95,32 +95,18 @@ void main() {
 	// First things first, disable motors. Note: 'enable' pin is negated on the drivers.
 	__R30 = __R30 | (1 << PIN_ENABLE);
 
-	struct pru_rpmsg_transport transport;
-	struct DataFrame* received;
-	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
-	received->speedLeft = 0;
-	received->speedRight = 0;
-	received->directionLeft = 0;
-	received->directionRight = 0;
-	received->microstep = 1;
-	uint16_t src, dst, len;
-	volatile uint8_t *status;
-	int32_t stepTargetLeft = 0;
-	int32_t stepTargetRight = 0;
-	uint32_t speedLeft = 0;
-	uint32_t speedRight = 0;
-	int32_t timeFromLastFrame = 0;
-
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 	// Clear the status of the PRU-ICSS system event that the ARM will use to 'kick' us
 	CT_INTC.SICR_bit.STS_CLR_IDX = FROM_ARM_HOST;
 
 	// Make sure the Linux drivers are ready for RPMsg communication
+	volatile uint8_t *status;
 	status = &resourceTable.rpmsg_vdev.status;
 	while (!(*status & VIRTIO_CONFIG_S_DRIVER_OK));
 
 	// Initialize the RPMsg transport structure
+	struct pru_rpmsg_transport transport;
 	pru_rpmsg_init(&transport, &resourceTable.rpmsg_vring0, &resourceTable.rpmsg_vring1, TO_ARM_HOST, FROM_ARM_HOST);
 
 	// Create the RPMsg channel between the PRU and ARM user space using the transport structure.
@@ -130,6 +116,16 @@ void main() {
 	PRU1_CTRL.CYCLE = 0;
 	PRU1_CTRL.CTRL_bit.CTR_EN = 1;
 
+	uint16_t src, dst, len;
+	struct DataFrame* received;
+	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
+	received->enabled = 0;
+	int32_t stepTargetLeft = 0;
+	int32_t stepTargetRight = 0;
+	uint32_t speedLeft = 0;
+	uint32_t speedRight = 0;
+	int32_t timeFromLastFrame = 0;
+
 	while (1) {
 		// Check bit 30 of register R31 to see if the ARM has kicked us
 		if (__R31 & HOST_INT) {
@@ -137,7 +133,7 @@ void main() {
 			CT_INTC.SICR_bit.STS_CLR_IDX = FROM_ARM_HOST;
 			// Receive all available messages, multiple messages can be sent per kick
 			while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
-				received = (struct DataFrame*) payload;
+				memcpy(received, payload, sizeof(struct DataFrame));
 
 				// Set microstepping
 				if (received->microstep == 1) {
@@ -180,7 +176,7 @@ void main() {
 					__R30 = __R30 & ~(1 << PIN_ENABLE);
 				} else {
 					__R30 = __R30 | (1 << PIN_ENABLE);
-					return;
+					continue;
 				}
 
 				// Set direction of left motor
