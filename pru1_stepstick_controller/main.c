@@ -73,8 +73,8 @@
 // Used to make sure the Linux drivers are ready for RPMsg communication; Found at linux-x.y.z/include/uapi/linux/virtio_config.h
 #define VIRTIO_CONFIG_S_DRIVER_OK 4
 
-// How long to wait between frames before shutting down (1s = 200M cycles)
-#define SHUTDOWN_WATCHDOG_TIMER (200 * 1000 * 1000)
+// How long to wait between frames before shutting down (0.5s = 200M cycles)
+#define SHUTDOWN_WATCHDOG_TIMER (200 * 1000 * 1000 / 2)
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
@@ -120,11 +120,11 @@ void main() {
 	struct DataFrame* received;
 	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
 	received->enabled = 0;
-	int32_t stepTargetLeft = 0;
-	int32_t stepTargetRight = 0;
+	uint32_t stepTargetLeft = 0;
+	uint32_t stepTargetRight = 0;
 	uint32_t speedLeft = 0;
 	uint32_t speedRight = 0;
-	int32_t timeFromLastFrame = 0;
+	uint32_t timeFromLastFrame = 0;
 
 	while (1) {
 		// Check bit 30 of register R31 to see if the ARM has kicked us
@@ -134,6 +134,14 @@ void main() {
 			// Receive all available messages, multiple messages can be sent per kick
 			while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 				memcpy(received, payload, sizeof(struct DataFrame));
+
+				// Enable/disable motors
+				if (received->enabled) {
+					__R30 = __R30 & ~(1 << PIN_ENABLE);
+				} else {
+					__R30 = __R30 | (1 << PIN_ENABLE);
+					continue;
+				}
 
 				// Set microstepping
 				if (received->microstep == 1) {
@@ -171,33 +179,17 @@ void main() {
 					continue;
 				}
 
-				// Enable/disable motors
-				if (received->enabled) {
-					__R30 = __R30 & ~(1 << PIN_ENABLE);
-				} else {
-					__R30 = __R30 | (1 << PIN_ENABLE);
-					continue;
-				}
-
-				// Set direction of left motor
+				// Set direction of left motor...
 				if (received->directionLeft == 1) {
 					__R30 = __R30 | (1 << PIN_DIR_LEFT);
 				} else {
 					__R30 = __R30 & ~(1 << PIN_DIR_LEFT);
 				}
-				// Set direction of right motor
+				// ... and right motor
 				if (received->directionRight == 1) {
 					__R30 = __R30 | (1 << PIN_DIR_RIGHT);
 				} else {
 					__R30 = __R30 & ~(1 << PIN_DIR_RIGHT);
-				}
-
-				// Clip speeds values (uint->int cast)
-				if (received->speedLeft > INT32_MAX) {
-					received->speedLeft = INT32_MAX;
-				}
-				if (received->speedRight > INT32_MAX) {
-					received->speedRight = INT32_MAX;
 				}
 
 				// If speeds have changed, save them and reset timer
@@ -215,7 +207,7 @@ void main() {
 		}
 
 		// Save current timepoint
-		int32_t timeNow = PRU1_CTRL.CYCLE;
+		uint32_t timeNow = PRU1_CTRL.CYCLE;
 
 		// Check communication timeout
 		if ((timeFromLastFrame + timeNow) > SHUTDOWN_WATCHDOG_TIMER) {
