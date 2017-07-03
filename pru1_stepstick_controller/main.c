@@ -75,6 +75,9 @@
 
 // How long to wait between frames before shutting down (0.5s = 200M cycles)
 #define SHUTDOWN_WATCHDOG_TIMER (200 * 1000 * 1000 / 2)
+const uint32_t DELAY_MIN = 300000;
+const uint32_t DELAY_MAX = 200000000;
+const uint32_t ZERO_UINT32 = 0x0;
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
@@ -120,8 +123,8 @@ void main() {
 	struct DataFrame* received;
 	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
 	received->enabled = 0;
-	uint32_t stepTargetLeft = 0;
-	uint32_t stepTargetRight = 0;
+	int32_t stepTargetLeft = 0;
+	int32_t stepTargetRight = 0;
 	uint32_t speedLeft = 0;
 	uint32_t speedRight = 0;
 	uint32_t timeFromLastFrame = 0;
@@ -192,6 +195,20 @@ void main() {
 					__R30 = __R30 & ~(1 << PIN_DIR_RIGHT);
 				}
 
+				uint32_t minDelay = DELAY_MIN / received->microstep;
+				if (received->speedLeft != ZERO_UINT32 && received->speedLeft < minDelay) {
+					received->speedLeft = minDelay;
+				}
+				if (received->speedRight != ZERO_UINT32 && received->speedRight < minDelay) {
+					received->speedRight = minDelay;
+				}
+				if (received->speedLeft > DELAY_MAX) {
+					received->speedLeft = DELAY_MAX;
+				}
+				if (received->speedRight > DELAY_MAX) {
+					received->speedRight = DELAY_MAX;
+				}
+
 				// If speeds have changed, save them and reset timer
 				if (speedLeft != received->speedLeft || speedRight != received->speedRight) {
 					speedLeft = received->speedLeft;
@@ -207,7 +224,7 @@ void main() {
 		}
 
 		// Save current timepoint
-		uint32_t timeNow = PRU1_CTRL.CYCLE;
+		int32_t timeNow = PRU1_CTRL.CYCLE;
 
 		// Check communication timeout
 		if ((timeFromLastFrame + timeNow) > SHUTDOWN_WATCHDOG_TIMER) {
@@ -223,7 +240,7 @@ void main() {
 		}
 
 		// If enough time has passed, switch step for left motor
-		if (timeNow >= stepTargetLeft) {
+		if (speedLeft != ZERO_UINT32 && timeNow >= stepTargetLeft) {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << PIN_STEP_LEFT);
 
@@ -239,7 +256,7 @@ void main() {
 		}
 
 		// If enough time has passed, switch step for right motor
-		if (timeNow >= stepTargetRight) {
+		if (speedRight != ZERO_UINT32 && timeNow >= stepTargetRight) {
 			// Toggle right motor step
 			__R30 = __R30 ^ (1 << PIN_STEP_RIGHT);
 
