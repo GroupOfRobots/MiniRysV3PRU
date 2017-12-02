@@ -41,7 +41,7 @@
 #include <pru_rpmsg.h>
 #include "resource_table_1.h"
 
-/* Host-1 Interrupt sets bit 31 in register R31 */
+// Host-1 Interrupt sets bit 31 in register R31
 #define HOST_INT ((uint32_t) 1 << 31)
 
 // The PRU-ICSS system events used for RPMsg are defined in the Linux device tree
@@ -50,15 +50,14 @@
 #define TO_ARM_HOST 18
 #define FROM_ARM_HOST 19
 
-#define LSTEP 5 //P8_42
-#define LDIR 4 //P8_41
-#define RSTEP 2 //P8_43
-#define RDIR 3 //P8_44
-
-#define LM0 7 //P8_40
-#define LM1 6 //P8_39
-#define RM0 0 //P8_45
-#define RM1 1 //P8_46
+#define PIN_ENABLE 8 // P8_27, LCD_VSYNC
+#define PIN_MICROSTEP_0 10 // P8_28, LCD_PCLK
+#define PIN_MICROSTEP_1 9 // P8_29, LCD_HSYNC
+#define PIN_MICROSTEP_2 11 // P8_30, LCD_DE
+#define PIN_DIR_LEFT 2 // P8_43, LCD_DATA2
+#define PIN_STEP_LEFT 3 // P8_44, LCD_DATA3
+#define PIN_DIR_RIGHT 0 // P8_45, LCD_DATA0
+#define PIN_STEP_RIGHT 1 // P8_46, LCD_DATA1
 
 /*
  * Using the name 'rpmsg-client-sample' will probe the RPMsg sample driver
@@ -75,38 +74,33 @@
 #define VIRTIO_CONFIG_S_DRIVER_OK 4
 
 // How long to wait between frames before shutting down (1s = 200M cycles)
-#define SHUTDOWN_WATCHDOG_TIMER (200000000)
+#define SHUTDOWN_WATCHDOG_TIMER (200 * 1000 * 1000)
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
 
 struct DataFrame {
-	uint32_t speedLeft;
-	uint32_t speedRight;
+	uint8_t enabled;
+	// 1/microstep (1 - full step, 4 - 1/4 step and so on)
+	uint8_t microstep;
 	uint8_t directionLeft;
 	uint8_t directionRight;
-	//1 - fullstep; 2 - halfstep; 4 - 1/4 step; 8 - 1/8 step
-	uint8_t microstep;
+	uint32_t speedLeft;
+	uint32_t speedRight;
 };
 
 uint8_t payload[RPMSG_BUF_SIZE];
 
 void main() {
-	struct pru_rpmsg_transport transport;
-	struct DataFrame* received;
-	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
-	received->speedLeft = 0;
-	received->speedRight = 0;
-	received->directionLeft = 0;
-	received->directionRight = 0;
-	received->microstep = 1;
-	uint16_t src, dst, len;
-	volatile uint8_t *status;
-	int32_t stepTargetLeft = 0;
-	int32_t stepTargetRight = 0;
-	uint32_t speedLeft = 0;
-	uint32_t speedRight = 0;
-	int32_t timeFromLastFrame = 0;
+	// Set 1 on all pins
+	__R31 = __R31 | (1 << PIN_ENABLE);
+	__R31 = __R31 | (1 << PIN_MICROSTEP_0);
+	__R31 = __R31 | (1 << PIN_MICROSTEP_1);
+	__R31 = __R31 | (1 << PIN_MICROSTEP_2);
+	__R31 = __R31 | (1 << PIN_DIR_LEFT);
+	__R31 = __R31 | (1 << PIN_STEP_LEFT);
+	__R31 = __R31 | (1 << PIN_DIR_RIGHT);
+	__R31 = __R31 | (1 << PIN_STEP_RIGHT);
 
 	// Allow OCP master port access by the PRU so the PRU can read external memories
 	CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
@@ -114,18 +108,20 @@ void main() {
 	CT_INTC.SICR_bit.STS_CLR_IDX = FROM_ARM_HOST;
 
 	// Make sure the Linux drivers are ready for RPMsg communication
+	volatile uint8_t *status;
 	status = &resourceTable.rpmsg_vdev.status;
 	while (!(*status & VIRTIO_CONFIG_S_DRIVER_OK));
 
 	// Initialize the RPMsg transport structure
+	struct pru_rpmsg_transport transport;
 	pru_rpmsg_init(&transport, &resourceTable.rpmsg_vring0, &resourceTable.rpmsg_vring1, TO_ARM_HOST, FROM_ARM_HOST);
 
 	// Create the RPMsg channel between the PRU and ARM user space using the transport structure.
 	while (pru_rpmsg_channel(RPMSG_NS_CREATE, &transport, CHAN_NAME, CHAN_DESC, CHAN_PORT) != PRU_RPMSG_SUCCESS);
 
-	// Enable counter
-	PRU1_CTRL.CYCLE = 0;
-	PRU1_CTRL.CTRL_bit.CTR_EN = 1;
+	uint16_t src, dst, len;
+	struct DataFrame* received;
+	received = (struct DataFrame*) malloc(sizeof(struct DataFrame));
 
 	while (1) {
 		// Check bit 30 of register R31 to see if the ARM has kicked us
@@ -136,105 +132,26 @@ void main() {
 			while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
 				received = (struct DataFrame*) payload;
 
-				// Set microstepping
-				if (received->microstep == 1) {
-					// Full step: M0 = 0, M1 = 0
-					__R30 = __R30 & ~(1 << LM1);
-					__R30 = __R30 & ~(1 << LM0);
-					__R30 = __R30 & ~(1 << RM1);
-					__R30 = __R30 & ~(1 << RM0);
-				} else if (received->microstep == 2) {
-					// Half step: M0 = 1, M1 = 0
-					__R30 = __R30 & ~(1 << LM1);
-					__R30 = __R30 | (1 << LM0);
-					__R30 = __R30 & ~(1 << RM1);
-					__R30 = __R30 | (1 << RM0);
-				} else if (received->microstep == 4) {
-					// 1/4 step: M0 = 0, M1 = 1
-					__R30 = __R30 | (1 << LM1);
-					__R30 = __R30 & ~(1 << LM0);
-					__R30 = __R30 | (1 << RM1);
-					__R30 = __R30 & ~(1 << RM0);
-				} else if (received->microstep == 8) {
-					// 1/8 step: M0 = 1, M1 = 1
-					__R30 = __R30 | (1 << LM1);
-					__R30 = __R30 | (1 << LM0);
-					__R30 = __R30 | (1 << RM1);
-					__R30 = __R30 | (1 << RM0);
+				if (received->enabled) {
+					__R31 = __R31 & ~(1 << PIN_ENABLE);
+					__R31 = __R31 & ~(1 << PIN_MICROSTEP_0);
+					__R31 = __R31 & ~(1 << PIN_MICROSTEP_1);
+					__R31 = __R31 & ~(1 << PIN_MICROSTEP_2);
+					__R31 = __R31 & ~(1 << PIN_DIR_LEFT);
+					__R31 = __R31 & ~(1 << PIN_STEP_LEFT);
+					__R31 = __R31 & ~(1 << PIN_DIR_RIGHT);
+					__R31 = __R31 & ~(1 << PIN_STEP_RIGHT);
 				} else {
-					// Invalid microstepping? bail out!
-					continue;
+					__R31 = __R31 | (1 << PIN_ENABLE);
+					__R31 = __R31 | (1 << PIN_MICROSTEP_0);
+					__R31 = __R31 | (1 << PIN_MICROSTEP_1);
+					__R31 = __R31 | (1 << PIN_MICROSTEP_2);
+					__R31 = __R31 | (1 << PIN_DIR_LEFT);
+					__R31 = __R31 | (1 << PIN_STEP_LEFT);
+					__R31 = __R31 | (1 << PIN_DIR_RIGHT);
+					__R31 = __R31 | (1 << PIN_STEP_RIGHT);
 				}
-
-				// Set direction of left motor
-				if (received->directionLeft == 1) {
-					__R30 = __R30 | (1 << LDIR);
-				} else {
-					__R30 = __R30 & ~(1 << LDIR);
-				}
-				// Set direction of right motor
-				if (received->directionRight == 1) {
-					__R30 = __R30 | (1 << RDIR);
-				} else {
-					__R30 = __R30 & ~(1 << RDIR);
-				}
-
-				// Clip speeds values (uint->int cast)
-				if (received->speedLeft > INT32_MAX) {
-					received->speedLeft = INT32_MAX;
-				}
-				if (received->speedRight > INT32_MAX) {
-					received->speedRight = INT32_MAX;
-				}
-
-				// If speeds have changed, save them and reset timer
-				if (speedLeft != received->speedLeft || speedRight != received->speedRight) {
-					speedLeft = received->speedLeft;
-					speedRight = received->speedRight;
-					stepTargetLeft = speedLeft;
-					stepTargetRight = speedRight;
-					PRU1_CTRL.CYCLE = 0;
-				}
-
-				// Reset watchdog timer
-				timeFromLastFrame = 0;
 			}
-		}
-
-		// Save current timepoint
-		int32_t timeNow = PRU1_CTRL.CYCLE;
-
-		if ((timeFromLastFrame + timeNow) > SHUTDOWN_WATCHDOG_TIMER) {
-			if (timeFromLastFrame <= SHUTDOWN_WATCHDOG_TIMER) {
-				timeFromLastFrame += timeNow;
-			}
-			PRU1_CTRL.CYCLE = 0;
-			continue;
-		}
-
-		// If enough time has passed, switch step for left motor
-		if (timeNow >= stepTargetLeft) {
-			// Toggle left motor step
-			__R30 = __R30 ^ (1 << LSTEP);
-
-			// Reduce right motor step switch timepoint
-			stepTargetRight -= timeNow;
-			// Update left motor step switch timepoint
-			stepTargetLeft = speedLeft;
-			// Update watchdog timer
-			timeFromLastFrame += timeNow;
-			// Reset cycle timer
-			PRU1_CTRL.CYCLE = 0;
-			timeNow = 0;
-		}
-
-		// If enough time has passed, switch step for right motor
-		if (timeNow >= stepTargetRight) {
-			// Toggle right motor step
-			__R30 = __R30 ^ (1 << RSTEP);
-
-			// Update right motor step switch timepoint
-			stepTargetRight += speedRight;
 		}
 	}
 }
