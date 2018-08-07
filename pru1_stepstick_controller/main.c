@@ -159,9 +159,9 @@ void main() {
 					__R30 = __R30 & ~(1 << PIN_MICROSTEP_2);
 				} else if (received->microstep == 4) {
 					// 1/4 step: M0 = 0, M1 = 1, M2 = 0
-					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
-					__R30 = __R30 & ~(1 << PIN_MICROSTEP_1);
-					__R30 = __R30 | (1 << PIN_MICROSTEP_2);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_0);
+					__R30 = __R30 | (1 << PIN_MICROSTEP_1);
+					__R30 = __R30 & ~(1 << PIN_MICROSTEP_2);
 				} else if (received->microstep == 8) {
 					// 1/8 step: M0 = 1, M1 = 1, M2 = 0
 					__R30 = __R30 | (1 << PIN_MICROSTEP_0);
