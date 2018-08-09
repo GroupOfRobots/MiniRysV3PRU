@@ -244,24 +244,36 @@ void main() {
 			// Toggle left motor step
 			__R30 = __R30 ^ (1 << PIN_STEP_LEFT);
 
+			timeFromLastFrame += timeNow;
 			// Reduce right motor step switch timepoint
 			stepTargetRight -= timeNow;
 			// Update left motor step switch timepoint
 			stepTargetLeft = speedLeft;
 			// Update watchdog timer
-			timeFromLastFrame += timeNow;
+
 			// Reset cycle timer
 			PRU1_CTRL.CYCLE = 0;
 			timeNow = 0;
+
 		}
 
 		// If enough time has passed, switch step for right motor
 		if (speedRight != ZERO_UINT32 && timeNow >= stepTargetRight) {
 			// Toggle right motor step
-			__R30 = __R30 ^ (1 << PIN_STEP_RIGHT);
 
+            		__R30 = __R30 ^ (1 << PIN_STEP_RIGHT);
+
+			timeFromLastFrame += timeNow;
+			// Reduce left motor step switch timepoint
+			stepTargetLeft -= timeNow;
 			// Update right motor step switch timepoint
-			stepTargetRight += speedRight;
+			stepTargetRight = speedRight;
+			// Update watchdog timer
+
+			// Reset cycle timer
+			PRU1_CTRL.CYCLE = 0;
+			timeNow = 0;
 		}
 	}
 }
+
